@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TaskFlow">
+<meta name="mobile-web-app-capable" content="yes">
+<title>TaskFlow</title>
+<script>
+// Generate icon as canvas and inject as apple-touch-icon
+(function(){
+  try {
+    const c=document.createElement('canvas');
+    c.width=180; c.height=180;
+    const ctx=c.getContext('2d');
+    // Background rounded rect
+    const r=36;
+    ctx.beginPath();
+    ctx.moveTo(r,0); ctx.lineTo(180-r,0);
+    ctx.quadraticCurveTo(180,0,180,r);
+    ctx.lineTo(180,180-r); ctx.quadraticCurveTo(180,180,180-r,180);
+    ctx.lineTo(r,180); ctx.quadraticCurveTo(0,180,0,180-r);
+    ctx.lineTo(0,r); ctx.quadraticCurveTo(0,0,r,0);
+    ctx.closePath();
+    // Gradient fill
+    const g=ctx.createLinearGradient(0,0,180,180);
+    g.addColorStop(0,'#1a1a2e'); g.addColorStop(1,'#6c63ff');
+    ctx.fillStyle=g; ctx.fill();
+    // White checkmark board icon
+    ctx.fillStyle='rgba(255,255,255,0.15)';
+    ctx.beginPath(); ctx.roundRect(28,28,124,124,14); ctx.fill();
+    ctx.fillStyle='white';
+    // Lines (task rows)
+    [[50,70,80],[50,95,100],[50,120,60]].forEach(([y,w,x2])=>{
+      ctx.beginPath(); ctx.roundRect(48,y,w,10,5); ctx.fill();
+    });
+    // Checkmarks
+    ctx.strokeStyle='#6c63ff'; ctx.lineWidth=7; ctx.lineCap='round'; ctx.lineJoin='round';
+    [[110,73],[110,98]].forEach(([x,y])=>{
+      ctx.beginPath(); ctx.moveTo(x,y+4); ctx.lineTo(x+6,y+10); ctx.lineTo(x+14,y-2); ctx.stroke();
+    });
+    // Circle pending
+    ctx.beginPath(); ctx.arc(117,126,7,0,Math.PI*2);
+    ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=3; ctx.stroke();
+
+    const url=c.toDataURL('image/png');
+    // Apple touch icon
+    const lnk=document.createElement('link');
+    lnk.rel='apple-touch-icon'; lnk.href=url;
+    document.head.appendChild(lnk);
+    // Favicon
+    const fav=document.createElement('link');
+    fav.rel='icon'; fav.type='image/png'; fav.href=url;
+    document.head.appendChild(fav);
+  } catch(e){}
+})();
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#1a1a2e;min-height:100vh;}
+
+/* LOGIN */
+#login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);display:flex;align-items:center;justify-content:center;z-index:9999;}
+#login-screen.hidden{display:none;}
+.login-box{background:white;border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 30px 80px rgba(0,0,0,.4);text-align:center;}
+.login-logo{font-size:30px;font-weight:800;color:#1a1a2e;margin-bottom:4px;}
+.login-logo span{color:#6c63ff;}
+.login-sub{font-size:13px;color:#888;margin-bottom:28px;}
+.llbl{font-size:13px;font-weight:600;color:#444;text-align:left;margin-bottom:6px;display:block;}
+.lsel,.lpin{width:100%;padding:12px;border:1.5px solid #ddd;border-radius:10px;font-size:15px;margin-bottom:14px;}
+.lsel:focus,.lpin:focus{outline:none;border-color:#6c63ff;}
+.lpin{letter-spacing:8px;font-size:22px;text-align:center;}
+.lbtn{width:100%;padding:13px;background:#6c63ff;color:white;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;}
+.lbtn:hover{background:#5a52d5;}
+.lerr{color:#ff4d4f;font-size:13px;margin-top:10px;min-height:18px;}
+.lhint{margin-top:14px;font-size:11px;color:#bbb;}
+
+/* NAV */
+nav{background:#1a1a2e;color:white;padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3);gap:8px;}
+.logo{font-size:17px;font-weight:700;letter-spacing:1px;white-space:nowrap;}
+.logo span{color:#6c63ff;}
+.nav-tabs{display:flex;gap:4px;}
+.nav-tab{background:none;border:none;color:#aaa;padding:7px 12px;border-radius:6px;cursor:pointer;font-size:13px;transition:all .2s;white-space:nowrap;}
+.nav-tab.active,.nav-tab:hover{background:#6c63ff;color:white;}
+.nav-right{display:flex;align-items:center;gap:8px;}
+.nav-uname{font-size:12px;color:#ccc;white-space:nowrap;}
+.nav-out{background:none;border:1px solid #555;color:#aaa;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px;}
+.nav-out:hover{background:#ff4d4f;border-color:#ff4d4f;color:white;}
+
+/* NOTIFICATIONS */
+.notif-bar{background:#fff8e1;border-bottom:3px solid #faad14;max-height:0;overflow:hidden;transition:max-height .4s;}
+.notif-bar.show{max-height:600px;}
+.notif-inner{max-width:1400px;margin:0 auto;padding:14px 20px;}
+.notif-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.notif-hdr h4{font-size:14px;font-weight:700;color:#d46b08;}
+.notif-x{background:none;border:none;font-size:20px;color:#999;cursor:pointer;}
+.ni{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:white;margin-bottom:6px;border-left:3px solid #faad14;font-size:13px;}
+.ni.vencida{border-left-color:#ff4d4f;background:#fff1f0;}
+.ni.hoy{border-left-color:#ff7a45;background:#fff2e8;}
+.ni.nueva{border-left-color:#6c63ff;background:#f0eeff;}
+.ni.comentario{border-left-color:#13c2c2;background:#e6fffb;}
+
+/* LAYOUT */
+.container{max-width:1400px;margin:0 auto;padding:20px 16px;}
+.page{display:none;}
+.page.active{display:block;}
+
+/* ── DASHBOARD ── */
+.db-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px;}
+.db-card{background:white;border-radius:14px;padding:18px;text-align:center;box-shadow:0 1px 6px rgba(0,0,0,.07);}
+.db-card .num{font-size:30px;font-weight:800;}
+.db-card .lbl{font-size:12px;color:#888;margin-top:3px;}
+.db-card.c-purple .num{color:#6c63ff;}
+.db-card.c-orange .num{color:#faad14;}
+.db-card.c-blue   .num{color:#1677ff;}
+.db-card.c-green  .num{color:#52c41a;}
+.db-card.c-red    .num{color:#ff4d4f;}
+.db-card.c-pink   .num{color:#eb2f96;}
+
+.db-section{margin-bottom:28px;}
+.db-section h3{font-size:16px;font-weight:700;margin-bottom:14px;color:#1a1a2e;display:flex;align-items:center;gap:8px;}
+
+.db-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px;}
+@media(max-width:900px){.db-row{grid-template-columns:1fr;}}
+
+.db-panel{background:white;border-radius:14px;padding:20px;box-shadow:0 1px 6px rgba(0,0,0,.07);}
+.db-panel h4{font-size:14px;font-weight:700;color:#444;margin-bottom:14px;}
+
+/* Chart bars */
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:13px;}
+.bar-label{width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#444;flex-shrink:0;}
+.bar-track{flex:1;background:#f0f0f0;border-radius:8px;height:18px;overflow:hidden;position:relative;}
+.bar-fill{height:100%;border-radius:8px;transition:width .6s ease;}
+.bar-val{width:44px;text-align:right;font-weight:600;color:#555;font-size:12px;flex-shrink:0;}
+
+/* Donut */
+.donut-wrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.donut-legend{display:flex;flex-direction:column;gap:8px;}
+.legend-item{display:flex;align-items:center;gap:7px;font-size:13px;}
+.legend-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+
+/* Risk table */
+.risk-table{width:100%;border-collapse:collapse;font-size:13px;}
+.risk-table th{text-align:left;padding:8px 10px;background:#f8f8f8;color:#888;font-size:11px;font-weight:600;border-bottom:1px solid #eee;}
+.risk-table td{padding:9px 10px;border-bottom:1px solid #f5f5f5;vertical-align:middle;}
+.risk-table tr:hover td{background:#fafafa;}
+
+/* Activity */
+.activity-list{display:flex;flex-direction:column;gap:0;}
+.act-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #f0f0f0;}
+.act-item:last-child{border-bottom:none;}
+.act-dot{width:8px;height:8px;border-radius:50%;background:#6c63ff;flex-shrink:0;margin-top:5px;}
+.act-text{font-size:13px;color:#444;flex:1;}
+.act-time{font-size:11px;color:#bbb;white-space:nowrap;}
+
+/* BUTTONS */
+.btn{padding:9px 16px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;}
+.btn-primary{background:#6c63ff;color:white;} .btn-primary:hover{background:#5a52d5;}
+.btn-sm{padding:5px 10px;font-size:12px;border-radius:6px;}
+.btn-ghost{background:#f0f0f0;color:#444;} .btn-ghost:hover{background:#e0e0e0;}
+.btn-danger{background:#ff4d4f;color:white;}
+.btn-success{background:#52c41a;color:white;}
+.btn-warning{background:#faad14;color:white;}
+
+/* TOOLBAR */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
+.toolbar input,.toolbar select{padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;background:white;}
+.toolbar input:focus,.toolbar select:focus{outline:none;border-color:#6c63ff;}
+
+/* TASK CARDS */
+.tasks-grid{display:flex;flex-direction:column;gap:11px;}
+.task-card{background:white;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-left:4px solid #ddd;transition:box-shadow .2s;}
+.task-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.11);}
+.task-card.alta{border-left-color:#ff4d4f;}
+.task-card.media{border-left-color:#faad14;}
+.task-card.baja{border-left-color:#52c41a;}
+.task-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.task-title{font-size:15px;font-weight:600;flex:1;}
+.task-meta{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;}
+.tag{padding:2px 9px;border-radius:20px;font-size:11px;font-weight:500;}
+.tag-empresa{background:#e8e3ff;color:#5a52d5;}
+.tag-area{background:#e6f4ff;color:#1677ff;}
+.tag-persona{background:#fff0e6;color:#d46b08;}
+.tag-fecha{background:#f6ffed;color:#389e0d;}
+.tag-vencida{background:#fff1f0;color:#cf1322;}
+.tag-hoy{background:#fff2e8;color:#d4380d;}
+.tag-self{background:#f0f0ff;color:#5a52d5;}
+.task-desc{color:#666;font-size:13px;margin-top:4px;}
+.progress-bar{background:#f0f0f0;border-radius:10px;height:7px;overflow:hidden;margin-top:10px;}
+.progress-fill{height:100%;border-radius:10px;background:#6c63ff;transition:width .4s;}
+.progress-label{font-size:11px;color:#888;margin-top:3px;}
+.task-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;border-top:1px solid #f0f0f0;padding-top:10px;align-items:center;}
+
+.status{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+.status-pendiente{background:#f0f0f0;color:#666;}
+.status-en-progreso{background:#e6f4ff;color:#1677ff;}
+.status-revision{background:#fff7e6;color:#d46b08;}
+.status-completada{background:#f6ffed;color:#389e0d;}
+
+/* COMMENTS */
+.comments-section{margin-top:10px;background:#fafafa;border-radius:8px;max-height:0;overflow:hidden;transition:max-height .35s ease;}
+.comments-section.open{max-height:1000px;padding:12px;}
+.comment{background:white;border-radius:8px;padding:9px 11px;margin-bottom:7px;font-size:13px;border:1px solid #eee;}
+.comment .cmeta{font-weight:600;color:#6c63ff;font-size:11px;margin-bottom:3px;}
+.ci-row{display:flex;gap:7px;margin-top:8px;}
+.ci-row input{flex:1;padding:8px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;}
+.ci-row input:focus{outline:none;border-color:#6c63ff;}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:16px;}
+.modal-overlay.open{display:flex;}
+.modal{background:white;border-radius:16px;padding:26px;width:100%;max-width:520px;max-height:93vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.modal h2{font-size:18px;font-weight:700;margin-bottom:18px;}
+.fg{margin-bottom:13px;}
+.fg label{display:block;font-size:12px;font-weight:600;color:#444;margin-bottom:4px;}
+.fg input,.fg select,.fg textarea{width:100%;padding:9px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;font-family:inherit;}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:#6c63ff;}
+.fg textarea{resize:vertical;min-height:70px;}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.mactions{display:flex;gap:8px;justify-content:flex-end;margin-top:6px;}
+
+/* PEOPLE */
+.people-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;}
+.pcard{background:white;border-radius:12px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.07);text-align:center;}
+.avatar{width:50px;height:50px;border-radius:50%;background:#6c63ff;color:white;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;margin:0 auto 10px;}
+.pcard h3{font-size:15px;font-weight:600;}
+.pmeta{font-size:12px;color:#888;margin:3px 0 10px;}
+.ptc{background:#e8e3ff;color:#5a52d5;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;}
+.pin-badge{display:block;margin-top:7px;font-size:11px;color:#888;}
+.pin-badge.set{color:#52c41a;font-weight:600;}
+
+/* KANBAN */
+.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.kcol{background:#f0f2f5;border-radius:12px;padding:12px;min-height:260px;}
+.kcol h3{font-size:13px;font-weight:700;margin-bottom:11px;padding-bottom:9px;border-bottom:2px solid #ddd;}
+.kcard{background:white;border-radius:8px;padding:10px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.07);font-size:13px;}
+.kcard .kt{font-weight:600;margin-bottom:5px;}
+
+.tag-recur{background:#f0eeff;color:#6c63ff;}
+/* CHIPS */
+.chip{display:inline-flex;align-items:center;gap:5px;background:#e8e3ff;color:#5a52d5;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;}
+.chip-x{background:none;border:none;cursor:pointer;color:#5a52d5;font-size:14px;line-height:1;padding:0;}
+.empty .icon{font-size:44px;margin-bottom:10px;}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1a2e;color:white;padding:11px 18px;border-radius:10px;font-size:14px;z-index:9999;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none;}
+.toast.show{opacity:1;transform:translateY(0);}
+
+/* OWNER SETUP */
+.setup-modal .modal{text-align:center;}
+
+@media(max-width:900px){
+  .db-row{grid-template-columns:1fr;}
+}
+@media(max-width:700px){
+  /* Nav mobile */
+  nav{height:auto;flex-wrap:wrap;padding:10px 12px;gap:6px;}
+  .nav-tabs{order:3;width:100%;justify-content:center;flex-wrap:wrap;}
+  .nav-tab{padding:6px 10px;font-size:12px;flex:1;text-align:center;}
+  .nav-right{gap:6px;}
+  .nav-uname{font-size:11px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  /* Container */
+  .container{padding:12px 10px;}
+  /* Login */
+  .login-box{padding:28px 20px;}
+  /* Stats */
+  .db-grid{grid-template-columns:repeat(3,1fr);}
+  .db-card .num{font-size:22px;}
+  /* Forms */
+  .frow{grid-template-columns:1fr;}
+  .modal{padding:18px 14px;}
+  /* Kanban - single column scroll */
+  .kanban{grid-template-columns:1fr;overflow-x:visible;}
+  /* Toolbar wraps nicely */
+  .toolbar input,.toolbar select{font-size:13px;padding:7px 9px;}
+  /* Task cards */
+  .task-card{padding:13px;}
+  .task-title{font-size:14px;}
+  /* People */
+  .people-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));}
+  /* Risk table scroll */
+  .risk-table{font-size:12px;}
+  /* Toast bottom center */
+  .toast{bottom:16px;right:50%;transform:translateX(50%) translateY(8px);}
+  .toast.show{transform:translateX(50%) translateY(0);}
+  /* Notif bar */
+  .notif-inner{padding:12px 14px;}
+  /* DB panels */
+  .db-panel{padding:14px;}
+}
+@media(max-width:420px){
+  .db-grid{grid-template-columns:repeat(2,1fr);}
+  .nav-tab{font-size:11px;padding:5px 7px;}
+  .login-box{padding:24px 16px;}
+  .login-logo{font-size:24px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">Task<span>Flow</span></div>
+    <div class="login-sub">Sistema de gestión de tareas</div>
+    <label class="llbl">¿Quién eres?</label>
+    <select class="lsel" id="login-sel">
+      <option value="">— Selecciona tu nombre —</option>
+      <option value="__owner__">👑 Dueño / Administrador</option>
+    </select>
+    <label class="llbl">PIN de acceso</label>
+    <input class="lpin" type="password" id="login-pin" maxlength="6" placeholder="••••" inputmode="numeric">
+    <button class="lbtn" onclick="doLogin()">Entrar →</button>
+    <div class="lerr" id="login-err"></div>
+    <div id="safari-warn" style="display:none;margin-top:14px;background:#fff8e1;border:1.5px solid #faad14;border-radius:10px;padding:12px;font-size:12px;color:#7c4700;text-align:left;">
+      ⚠️ <strong>Safari detectado:</strong> Abre este archivo desde <strong>Google Drive</strong> para que los datos se guarden correctamente.<br>
+      <span style="color:#888;font-size:11px;margin-top:4px;display:block;">Si lo abres como adjunto o desde Archivos, los datos se borran al cerrar.</span>
+    </div>
+    <div class="lhint">El dueño ve el dashboard completo · Cada persona ve y crea sus tareas</div>
+  </div>
+</div>
+
+<!-- ══ NAV ══ -->
+<nav>
+  <div class="logo">Task<span>Flow</span></div>
+  <div class="nav-tabs" id="nav-tabs">
+    <button class="nav-tab owner-only" onclick="showPage('dashboard',this)">📊 Dashboard</button>
+    <button class="nav-tab active" onclick="showPage('tareas',this)">📋 Tareas</button>
+    <button class="nav-tab" onclick="showPage('kanban',this)">🗂 Kanban</button>
+    <button class="nav-tab owner-only" onclick="showPage('personas',this)">👥 Personas</button>
+  </div>
+  <div class="nav-right">
+    <span class="nav-uname" id="nav-uname"></span>
+    <button class="nav-out owner-only" onclick="openBackupModal()" style="border-color:#6c63ff;color:#aaa;" title="Respaldo de datos">💾</button>
+    <button class="nav-out" onclick="doLogout()">Salir</button>
+  </div>
+</nav>
+
+<!-- ══ BACKUP MODAL ══ -->
+<div class="modal-overlay" id="backup-modal">
+  <div class="modal" style="max-width:440px;text-align:center;">
+    <h2>💾 Respaldo de datos</h2>
+    <p style="color:#666;font-size:13px;margin-bottom:20px;">Exporta todos tus datos para guardarlos como copia de seguridad, o importa un respaldo anterior.</p>
+
+    <div style="background:#f6ffed;border:1.5px solid #b7eb8f;border-radius:10px;padding:16px;margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:700;color:#389e0d;margin-bottom:8px;">📤 Exportar respaldo</div>
+      <p style="font-size:12px;color:#666;margin-bottom:12px;">Descarga un archivo con todas tus tareas, personas y configuración.</p>
+      <button class="btn btn-success" onclick="exportBackup()" style="width:100%;">Descargar respaldo (.json)</button>
+    </div>
+
+    <div style="background:#fff7e6;border:1.5px solid #ffd591;border-radius:10px;padding:16px;margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:700;color:#d46b08;margin-bottom:8px;">📥 Importar respaldo</div>
+      <p style="font-size:12px;color:#666;margin-bottom:12px;">⚠️ Esto <strong>reemplazará todos los datos actuales</strong>. Haz una exportación antes si tienes datos que no quieres perder.</p>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importBackup(event)">
+      <button class="btn btn-warning" onclick="document.getElementById('import-file').click()" style="width:100%;">Seleccionar archivo de respaldo</button>
+    </div>
+
+    <div style="background:#f0f2f5;border-radius:10px;padding:14px;margin-bottom:16px;text-align:left;">
+      <div style="font-size:12px;font-weight:700;color:#555;margin-bottom:6px;">📊 Estado actual</div>
+      <div id="backup-stats" style="font-size:13px;color:#666;"></div>
+    </div>
+
+    <button class="btn btn-ghost" onclick="closeBackupModal()" style="width:100%;">Cerrar</button>
+  </div>
+</div>
+
+<!-- ══ NOTIFICATIONS ══ -->
+<div class="notif-bar" id="notif-bar">
+  <div class="notif-inner">
+    <div class="notif-hdr">
+      <h4 id="notif-title">🔔 Novedades al entrar</h4>
+      <button class="notif-x" onclick="document.getElementById('notif-bar').classList.remove('show')">×</button>
+    </div>
+    <div id="notif-list"></div>
+  </div>
+</div>
+
+<!-- ══ PAGES ══ -->
+<div class="container">
+
+  <!-- DASHBOARD (owner) -->
+  <div class="page" id="page-dashboard">
+    <div style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <h2 style="font-size:20px;font-weight:800;">📊 Dashboard</h2>
+      <span style="font-size:13px;color:#888;" id="db-date"></span>
+    </div>
+
+    <!-- KPIs -->
+    <div class="db-grid" id="db-kpis"></div>
+
+    <!-- Row 1: empresa detail + persona load -->
+    <div class="db-row">
+      <div class="db-panel" style="overflow-x:auto;">
+        <h4>🏢 Resumen por empresa</h4>
+        <table class="risk-table" id="db-empresa-table">
+          <thead><tr><th>Empresa</th><th>Total</th><th>En progreso</th><th>Completadas</th><th>Vencidas</th><th>Avance %</th></tr></thead>
+          <tbody id="db-empresa-tbody"></tbody>
+        </table>
+      </div>
+      <div class="db-panel">
+        <h4>👤 Carga por persona</h4>
+        <div id="db-persona-bars"></div>
+      </div>
+    </div>
+
+    <!-- Row 2: risk table (full width) -->
+    <div class="db-panel" style="overflow-x:auto;margin-bottom:24px;">
+      <h4>⚠️ Tareas en riesgo o vencidas</h4>
+      <table class="risk-table">
+        <thead><tr><th>Tarea</th><th>Persona</th><th>Empresa</th><th>Área</th><th>Avance</th><th>Vence</th><th>Estado</th></tr></thead>
+        <tbody id="risk-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAREAS -->
+  <div class="page active" id="page-tareas">
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="openModal()">+ Nueva Tarea</button>
+      <input type="text" id="search" placeholder="🔍 Buscar..." oninput="renderTareas()">
+      <select id="f-empresa" onchange="renderTareas()" class="owner-only"><option value="">Todas las empresas</option></select>
+      <select id="f-area"    onchange="renderTareas()" class="owner-only"><option value="">Todas las áreas</option></select>
+      <select id="f-persona" onchange="renderTareas()" class="owner-only"><option value="">Todas las personas</option></select>
+      <select id="f-estado"  onchange="renderTareas()">
+        <option value="">Todos los estados</option>
+        <option value="pendiente">Pendiente</option>
+        <option value="en-progreso">En progreso</option>
+        <option value="revision">En revisión</option>
+        <option value="completada">Completada</option>
+      </select>
+    </div>
+    <div class="tasks-grid" id="tasks-list"></div>
+  </div>
+
+  <!-- KANBAN -->
+  <div class="page" id="page-kanban">
+    <div style="margin-bottom:14px;"><h2 style="font-size:18px;font-weight:700;">Vista Kanban</h2></div>
+    <div class="kanban">
+      <div class="kcol"><h3>⏳ Pendiente</h3><div id="k-pendiente"></div></div>
+      <div class="kcol"><h3>🔵 En Progreso</h3><div id="k-en-progreso"></div></div>
+      <div class="kcol"><h3>🟡 En Revisión</h3><div id="k-revision"></div></div>
+      <div class="kcol"><h3>✅ Completada</h3><div id="k-completada"></div></div>
+    </div>
+  </div>
+
+  <!-- PERSONAS (owner) -->
+  <div class="page" id="page-personas">
+    <div class="toolbar" style="margin-bottom:14px;">
+      <button class="btn btn-primary" onclick="openPersonaModal()">+ Nueva Persona</button>
+      <h2 style="font-size:18px;font-weight:700;">Equipo</h2>
+    </div>
+    <div class="people-grid" id="people-grid"></div>
+  </div>
+
+</div>
+
+<!-- TASK MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2 id="modal-title">Nueva Tarea</h2>
+    <div class="fg"><label>Título *</label><input type="text" id="f-titulo" placeholder="Nombre de la tarea"></div>
+    <div class="fg"><label>Descripción</label><textarea id="f-desc" placeholder="Detalle..."></textarea></div>
+    <div class="frow">
+      <div class="fg"><label>Empresa</label><input type="text" id="f-emp" list="dl-emp"><datalist id="dl-emp"></datalist></div>
+      <div class="fg"><label>Área</label><input type="text" id="f-are" list="dl-are"><datalist id="dl-are"></datalist></div>
+    </div>
+    <div class="frow" id="owner-assign-row">
+      <div class="fg"><label>Asignar a</label><select id="f-per"><option value="">— Persona —</option></select></div>
+      <div class="fg"><label>Fecha límite</label><input type="date" id="f-fecha"></div>
+    </div>
+    <div class="fg" id="user-fecha-row" style="display:none;"><label>Fecha límite</label><input type="date" id="f-fecha-u"></div>
+    <div class="frow">
+      <div class="fg"><label>Prioridad</label>
+        <select id="f-prio"><option value="alta">🔴 Alta</option><option value="media" selected>🟡 Media</option><option value="baja">🟢 Baja</option></select>
+      </div>
+      <div class="fg"><label>Estado</label>
+        <select id="f-est"><option value="pendiente">Pendiente</option><option value="en-progreso">En progreso</option><option value="revision">En revisión</option><option value="completada">Completada</option></select>
+      </div>
+    </div>
+    <div class="fg">
+      <label>Avance: <span id="av-val">0</span>%</label>
+      <input type="range" id="f-av" min="0" max="100" value="0" oninput="document.getElementById('av-val').textContent=this.value" style="width:100%">
+    </div>
+    <div class="fg">
+      <label>🔁 Recurrencia <span style="font-weight:400;color:#888;">(opcional)</span></label>
+      <select id="f-recur" onchange="document.getElementById('recur-hint').style.display=this.value?'block':'none'">
+        <option value="">Sin recurrencia</option>
+        <option value="diaria">Diaria</option>
+        <option value="semanal">Semanal</option>
+        <option value="quincenal">Quincenal</option>
+        <option value="mensual">Mensual</option>
+        <option value="bimestral">Bimestral</option>
+        <option value="trimestral">Trimestral</option>
+        <option value="semestral">Semestral</option>
+        <option value="anual">Anual</option>
+      </select>
+      <div id="recur-hint" style="font-size:11px;color:#6c63ff;margin-top:4px;display:none;">
+        ✅ Al completarla, el sistema creará automáticamente la próxima ocurrencia con la fecha actualizada.
+      </div>
+    </div>
+    <div class="mactions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveTask()">Guardar Tarea</button>
+    </div>
+  </div>
+</div>
+
+<!-- PERSONA MODAL -->
+<div class="modal-overlay" id="persona-modal">
+  <div class="modal">
+    <h2 id="pm-title">Nueva Persona</h2>
+    <div class="fg"><label>Nombre completo *</label><input type="text" id="p-nombre" placeholder="Nombre"></div>
+    <div class="fg"><label>Cargo / Rol</label><input type="text" id="p-cargo" placeholder="Ej: Diseñador"></div>
+    <div class="fg">
+      <label>Empresas donde trabaja <span style="font-weight:400;color:#888;">(puede seleccionar varias)</span></label>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <input type="text" id="p-emp-input" placeholder="Escribe el nombre de la empresa..." list="dl-emp-p" style="flex:1;padding:9px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;">
+        <datalist id="dl-emp-p"></datalist>
+        <button type="button" class="btn btn-primary btn-sm" onclick="addEmpresaChip()" style="white-space:nowrap;">+ Agregar</button>
+      </div>
+      <div id="p-emp-chips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:28px;"></div>
+    </div>
+    <div class="fg">
+      <label>PIN de acceso (4–6 dígitos) *</label>
+      <input type="password" id="p-pin" maxlength="6" placeholder="••••" inputmode="numeric" style="letter-spacing:6px;font-size:18px;text-align:center;">
+      <div style="font-size:11px;color:#888;margin-top:3px;">Deja en blanco para no cambiar el PIN existente.</div>
+    </div>
+    <div class="mactions">
+      <button class="btn btn-ghost" onclick="closePersonaModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="savePersona()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- OWNER PIN SETUP -->
+<div class="modal-overlay" id="setup-modal">
+  <div class="modal" style="text-align:center;">
+    <h2>🔐 Configura tu PIN de administrador</h2>
+    <p style="color:#666;font-size:13px;margin:8px 0 20px;">Primera vez — define tu PIN para acceder como dueño.</p>
+    <div class="fg"><label>Nuevo PIN (4–6 dígitos)</label>
+      <input type="password" id="os-p1" maxlength="6" placeholder="••••" inputmode="numeric" style="letter-spacing:6px;font-size:20px;text-align:center;">
+    </div>
+    <div class="fg"><label>Confirmar PIN</label>
+      <input type="password" id="os-p2" maxlength="6" placeholder="••••" inputmode="numeric" style="letter-spacing:6px;font-size:20px;text-align:center;">
+    </div>
+    <div class="lerr" id="os-err"></div>
+    <div style="margin-top:14px;"><button class="btn btn-primary" onclick="saveOwnerPin()">Establecer PIN y entrar</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════ SAFARI-SAFE STORAGE ══════════════════
+// Safari blocks localStorage when file is opened from Files/email attachment.
+// This wrapper falls back to in-memory storage so the app still works,
+// and shows a one-time warning to open from Google Drive instead.
+const _memStore = {};
+const store = {
+  getItem(k){ try{ return localStorage.getItem(k); } catch(e){ return _memStore[k]||null; } },
+  setItem(k,v){ try{ localStorage.setItem(k,v); } catch(e){ _memStore[k]=v; } },
+  removeItem(k){ try{ localStorage.removeItem(k); } catch(e){ delete _memStore[k]; } }
+};
+
+// Detect if localStorage is actually working
+let _storageWorks = false;
+try { localStorage.setItem('_tf_test','1'); localStorage.removeItem('_tf_test'); _storageWorks=true; } catch(e){}
+
+// ══════════════════ DATA ══════════════════
+let tasks    = JSON.parse(store.getItem('tf3_tasks')    || '[]');
+let personas = JSON.parse(store.getItem('tf3_personas') || '[]');
+let activity = JSON.parse(store.getItem('tf3_activity') || '[]');
+let ownerPin = store.getItem('tf3_owner_pin') || '';
+let currentUser = null;
+let editingId = null, editingPId = null;
+
+function persist(){
+  store.setItem('tf3_tasks',    JSON.stringify(tasks));
+  store.setItem('tf3_personas', JSON.stringify(personas));
+  store.setItem('tf3_activity', JSON.stringify(activity.slice(0,60)));
+}
+
+function logActivity(text){
+  activity.unshift({ text, time: new Date().toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) });
+  if(activity.length>60) activity.pop();
+  persist();
+}
+
+function toast(msg,ms=2600){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),ms);
+}
+
+// ══════════════════ LOGIN ══════════════════
+function buildLoginSel(){
+  const s=document.getElementById('login-sel');
+  s.innerHTML='<option value="">— Selecciona tu nombre —</option><option value="__owner__">👑 Dueño / Administrador</option>';
+  personas.forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=p.nombre; s.appendChild(o); });
+}
+
+function doLogin(){
+  const sel=document.getElementById('login-sel');
+  const pin=document.getElementById('login-pin').value.trim();
+  const err=document.getElementById('login-err');
+  err.textContent='';
+  if(!sel.value){ err.textContent='Selecciona quién eres.'; return; }
+  if(sel.value==='__owner__'){
+    if(!ownerPin){ document.getElementById('login-screen').classList.add('hidden'); document.getElementById('setup-modal').classList.add('open'); return; }
+    if(pin!==ownerPin){ err.textContent='PIN incorrecto.'; return; }
+    currentUser={id:'__owner__',nombre:'Administrador',isOwner:true};
+  } else {
+    const p=personas.find(x=>x.id===sel.value);
+    if(!p){ err.textContent='Persona no encontrada.'; return; }
+    if(!p.pin){ err.textContent='Sin PIN. Pídele al administrador que lo configure.'; return; }
+    if(pin!==p.pin){ err.textContent='PIN incorrecto.'; return; }
+    currentUser={id:p.id,nombre:p.nombre,isOwner:false};
+  }
+  document.getElementById('login-pin').value='';
+  document.getElementById('login-screen').classList.add('hidden');
+  applySession();
+}
+
+function doLogout(){
+  currentUser=null;
+  document.getElementById('notif-bar').classList.remove('show');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('login-pin').value='';
+  document.getElementById('login-err').textContent='';
+  buildLoginSel();
+}
+
+function saveOwnerPin(){
+  const p1=document.getElementById('os-p1').value.trim();
+  const p2=document.getElementById('os-p2').value.trim();
+  const err=document.getElementById('os-err');
+  if(p1.length<4){ err.textContent='Mínimo 4 dígitos.'; return; }
+  if(p1!==p2){ err.textContent='Los PINes no coinciden.'; return; }
+  ownerPin=p1; store.setItem('tf3_owner_pin',ownerPin);
+  document.getElementById('setup-modal').classList.remove('open');
+  currentUser={id:'__owner__',nombre:'Administrador',isOwner:true};
+  applySession();
+}
+
+function applySession(){
+  document.getElementById('nav-uname').textContent='👤 '+currentUser.nombre;
+  document.querySelectorAll('.owner-only').forEach(el=>el.style.display=currentUser.isOwner?'':'none');
+  const firstTab = currentUser.isOwner ? 'dashboard' : 'tareas';
+  const tabs = document.querySelectorAll('.nav-tab');
+  tabs.forEach(t=>t.classList.remove('active'));
+  if(currentUser.isOwner){ tabs[0].classList.add('active'); } else { tabs[1].classList.add('active'); }
+  showPage(firstTab, null);
+  checkNotifications();
+  stampVisit(currentUser.id);
+  // Request browser notification permission
+  if('Notification' in window && Notification.permission==='default'){
+    Notification.requestPermission();
+  }
+}
+
+// ── Browser push notification ──
+function pushNotif(title, body, icon='📋'){
+  if(!('Notification' in window)) return;
+  if(Notification.permission!=='granted') return;
+  try {
+    new Notification(title, {
+      body,
+      icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">' + icon + '</text></svg>',
+      tag: title + body // deduplicate
+    });
+  } catch(e){ /* safari may block */ }
+}
+
+// ══════════════════ NOTIFICATIONS ══════════════════
+function getLastVisit(userId){
+  const key='tf3_last_'+userId;
+  const v=store.getItem(key);
+  return v ? parseInt(v) : 0;
+}
+function stampVisit(userId){
+  store.setItem('tf3_last_'+userId, Date.now());
+}
+
+function checkNotifications(){
+  const hoy=new Date(); hoy.setHours(0,0,0,0);
+  const hoyStr=new Date().toISOString().split('T')[0];
+  const lastVisit=getLastVisit(currentUser.id); // ms timestamp of previous login
+  const mine=currentUser.isOwner?tasks:tasks.filter(t=>t.personaId===currentUser.id);
+  const alerts=[];
+
+  // ── 1. Vencimientos ──
+  mine.filter(t=>t.estado!=='completada'&&t.fecha).forEach(t=>{
+    const fd=new Date(t.fecha+'T12:00:00');
+    const diff=Math.round((fd-hoy)/86400000);
+    const who=currentUser.isOwner?(personas.find(p=>p.id==t.personaId)||{nombre:''}).nombre:'';
+    const whoStr=who?` <span style="color:#888;font-size:11px;">(${who})</span>`:'';
+    if(diff<0)      alerts.push({cls:'vencida', sec:'venc', html:`⚠️ <strong>${t.titulo}</strong>${whoStr} — venció hace ${Math.abs(diff)} día${Math.abs(diff)>1?'s':''}`});
+    else if(diff===0) alerts.push({cls:'hoy',   sec:'venc', html:`🔴 <strong>${t.titulo}</strong>${whoStr} — vence <strong>HOY</strong>`});
+    else if(diff<=3)  alerts.push({cls:'',       sec:'venc', html:`🟡 <strong>${t.titulo}</strong>${whoStr} — vence en ${diff} día${diff>1?'s':''}`});
+  });
+
+  // ── 2. Tareas nuevas asignadas desde última visita (solo para no-dueño) ──
+  if(!currentUser.isOwner && lastVisit>0){
+    const nuevas=tasks.filter(t=>
+      t.personaId===currentUser.id &&
+      t.createdAt && t.createdAt > lastVisit
+    );
+    nuevas.forEach(t=>{
+      const by=t.createdBy==='__owner__'?'el Administrador':(personas.find(p=>p.id===t.createdBy)||{nombre:'alguien'}).nombre;
+      alerts.push({cls:'nueva', sec:'nueva', html:`📋 <strong>${t.titulo}</strong> — te fue asignada por <strong>${by}</strong>`});
+    });
+  }
+
+  // ── 3. Comentarios nuevos desde última visita ──
+  if(lastVisit>0){
+    mine.forEach(t=>{
+      const coms=t.comments||[];
+      const nuevosComs=coms.filter(c=>c.ts && c.ts>lastVisit && c.autorId!==currentUser.id);
+      nuevosComs.forEach(c=>{
+        alerts.push({cls:'comentario', sec:'com', html:`💬 <strong>${c.autor}</strong> comentó en "<strong>${t.titulo}</strong>": <em>${c.texto.substring(0,60)}${c.texto.length>60?'…':''}</em>`});
+      });
+    });
+  }
+
+  const bar=document.getElementById('notif-bar');
+  if(!alerts.length){ bar.classList.remove('show'); return; }
+
+  // Group by section
+  const venc=alerts.filter(a=>a.sec==='venc');
+  const nuevas=alerts.filter(a=>a.sec==='nueva');
+  const coms=alerts.filter(a=>a.sec==='com');
+
+  let html='';
+  if(venc.length){
+    html+=`<div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin:8px 0 5px;">⏰ Vencimientos</div>`;
+    html+=venc.map(a=>`<div class="ni ${a.cls}">${a.html}</div>`).join('');
+  }
+  if(nuevas.length){
+    html+=`<div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin:8px 0 5px;">📋 Tareas nuevas asignadas</div>`;
+    html+=nuevas.map(a=>`<div class="ni nueva">${a.html}</div>`).join('');
+  }
+  if(coms.length){
+    html+=`<div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin:8px 0 5px;">💬 Comentarios nuevos</div>`;
+    html+=coms.map(a=>`<div class="ni comentario">${a.html}</div>`).join('');
+  }
+
+  const total=alerts.length;
+  document.getElementById('notif-title').textContent=`🔔 ${total} novedad${total!==1?'es':''} desde tu última visita`;
+  document.getElementById('notif-list').innerHTML=html;
+  bar.classList.add('show');
+}
+
+// ══════════════════ NAVIGATION ══════════════════
+function showPage(name,tab){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(tab) tab.classList.add('active');
+  if(name==='dashboard') renderDashboard();
+  if(name==='kanban')    renderKanban();
+  if(name==='personas')  renderPersonas();
+  if(name==='tareas')    renderTareas();
+}
+
+// ══════════════════ DASHBOARD ══════════════════
+function renderDashboard(){
+  const hoy=new Date(); hoy.setHours(0,0,0,0);
+  const hoyStr=new Date().toISOString().split('T')[0];
+  const manStr=(()=>{const d=new Date(hoy);d.setDate(d.getDate()+1);return d.toISOString().split('T')[0];})();
+
+  document.getElementById('db-date').textContent=new Date().toLocaleDateString('es-CO',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  const total=tasks.length;
+  const pend=tasks.filter(t=>t.estado==='pendiente').length;
+  const prog=tasks.filter(t=>t.estado==='en-progreso').length;
+  const comp=tasks.filter(t=>t.estado==='completada').length;
+  const venc=tasks.filter(t=>t.fecha&&t.fecha<hoyStr&&t.estado!=='completada').length;
+  const hoyT=tasks.filter(t=>t.fecha===hoyStr&&t.estado!=='completada').length;
+  const pct=total?Math.round(tasks.reduce((a,t)=>a+(t.avance||0),0)/total):0;
+
+  document.getElementById('db-kpis').innerHTML=`
+    <div class="db-card c-purple"><div class="num">${total}</div><div class="lbl">Total tareas</div></div>
+    <div class="db-card c-orange"><div class="num">${pend}</div><div class="lbl">Pendientes</div></div>
+    <div class="db-card c-blue"><div class="num">${prog}</div><div class="lbl">En progreso</div></div>
+    <div class="db-card c-green"><div class="num">${comp}</div><div class="lbl">Completadas</div></div>
+    <div class="db-card c-red"><div class="num">${venc}</div><div class="lbl">Vencidas</div></div>
+    <div class="db-card c-pink"><div class="num">${hoyT}</div><div class="lbl">Vencen hoy</div></div>
+    <div class="db-card c-purple"><div class="num">${pct}%</div><div class="lbl">Avance global</div></div>
+    <div class="db-card c-blue"><div class="num">${personas.length}</div><div class="lbl">Personas</div></div>
+  `;
+
+  // Empresa detail table
+  const empresas=[...new Set(tasks.map(t=>t.empresa).filter(Boolean))];
+  const hoyStr2=hoyStr;
+  const tbody_emp=document.getElementById('db-empresa-tbody');
+  if(!empresas.length){
+    tbody_emp.innerHTML=`<tr><td colspan="6" style="color:#bbb;text-align:center;padding:16px;">Sin empresas registradas aún</td></tr>`;
+  } else {
+    tbody_emp.innerHTML=empresas.map(e=>{
+      const et=tasks.filter(t=>t.empresa===e);
+      const etotal=et.length;
+      const eprog=et.filter(t=>t.estado==='en-progreso').length;
+      const ecomp=et.filter(t=>t.estado==='completada').length;
+      const evenc=et.filter(t=>t.fecha&&t.fecha<hoyStr2&&t.estado!=='completada').length;
+      const eavg=etotal?Math.round(et.reduce((a,t)=>a+(t.avance||0),0)/etotal):0;
+      const evencBadge=evenc>0?`<span style="color:#ff4d4f;font-weight:700;">⚠️ ${evenc}</span>`:'<span style="color:#52c41a;">—</span>';
+      const pctBar=`<div style="display:flex;align-items:center;gap:6px;"><div style="flex:1;background:#f0f0f0;border-radius:6px;height:8px;overflow:hidden;min-width:60px;"><div style="width:${eavg}%;height:100%;background:#6c63ff;border-radius:6px;"></div></div><span style="font-size:12px;font-weight:600;color:#555;">${eavg}%</span></div>`;
+      return `<tr>
+        <td><strong>${e}</strong></td>
+        <td style="text-align:center;">${etotal}</td>
+        <td style="text-align:center;color:#1677ff;">${eprog}</td>
+        <td style="text-align:center;color:#52c41a;">${ecomp}</td>
+        <td style="text-align:center;">${evencBadge}</td>
+        <td style="min-width:120px;">${pctBar}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Persona bars — with task breakdown
+  document.getElementById('db-persona-bars').innerHTML = personas.length
+    ? personas.map(p=>{
+        const pt=tasks.filter(t=>t.personaId==p.id);
+        const activas=pt.filter(t=>t.estado!=='completada').length;
+        const pvenc=pt.filter(t=>t.fecha&&t.fecha<hoyStr&&t.estado!=='completada').length;
+        const pcomp=pt.filter(t=>t.estado==='completada').length;
+        const maxA=Math.max(1,...personas.map(x=>tasks.filter(t=>t.personaId==x.id&&t.estado!=='completada').length));
+        const pct3=Math.round(activas/maxA*100);
+        const col=pvenc>0?'#ff4d4f':activas>5?'#faad14':'#6c63ff';
+        return `<div style="margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+            <span style="font-size:13px;font-weight:600;color:#333;">${p.nombre}</span>
+            <span style="font-size:11px;color:#888;">${activas} activa${activas!==1?'s':''} · ${pcomp} completada${pcomp!==1?'s':''} ${pvenc>0?`· <span style="color:#ff4d4f;font-weight:700;">⚠️ ${pvenc} vencida${pvenc!==1?'s':''}</span>`:''}</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct3}%;background:${col}"></div></div>
+        </div>`;
+      }).join('')
+    : '<div style="color:#bbb;font-size:13px;padding:10px 0;">Sin personas aún</div>';
+
+  // Risk table (vencidas + próximas 3 días)
+  const at3=(()=>{const d=new Date(hoy);d.setDate(d.getDate()+3);return d.toISOString().split('T')[0];})();
+  const risk=tasks.filter(t=>t.fecha&&t.fecha<=at3&&t.estado!=='completada').sort((a,b)=>a.fecha<b.fecha?-1:1);
+  const tbody=document.getElementById('risk-tbody');
+  if(!risk.length){ tbody.innerHTML=`<tr><td colspan="7" style="color:#bbb;text-align:center;padding:16px;">¡Sin tareas en riesgo! 🎉</td></tr>`; }
+  else {
+    tbody.innerHTML=risk.map(t=>{
+      const p=personas.find(x=>x.id==t.personaId);
+      const fd=new Date(t.fecha+'T12:00:00');
+      const diff=Math.round((fd-hoy)/86400000);
+      const dayLbl=diff<0?`<span style="color:#ff4d4f;font-weight:700;">⚠️ ${Math.abs(diff)}d vencida</span>`:diff===0?'<span style="color:#d4380d;font-weight:700;">🔴 HOY</span>':`<span style="color:#d46b08;">🟡 ${diff}d</span>`;
+      const sMap={pendiente:'⏳','en-progreso':'🔵',revision:'🟡',completada:'✅'};
+      const avBar=`<div style="display:flex;align-items:center;gap:5px;"><div style="width:50px;background:#f0f0f0;border-radius:4px;height:6px;overflow:hidden;"><div style="width:${t.avance||0}%;height:100%;background:#6c63ff;border-radius:4px;"></div></div><span style="font-size:11px;">${t.avance||0}%</span></div>`;
+      return `<tr>
+        <td><strong>${t.titulo}</strong></td>
+        <td>${p?p.nombre:'—'}</td>
+        <td>${t.empresa||'—'}</td>
+        <td>${t.area||'—'}</td>
+        <td>${avBar}</td>
+        <td>${dayLbl}</td>
+        <td>${sMap[t.estado]||''} ${t.estado}</td>
+      </tr>`;
+    }).join('');
+  }
+}
+
+// ══════════════════ FILTERS ══════════════════
+function populateFilters(){
+  if(!currentUser?.isOwner) return;
+  const empresas=[...new Set(tasks.map(t=>t.empresa).filter(Boolean))];
+  const areas=[...new Set(tasks.map(t=>t.area).filter(Boolean))];
+  const fe=document.getElementById('f-empresa'),ve=fe.value;
+  fe.innerHTML='<option value="">Todas las empresas</option>'+empresas.map(e=>`<option ${ve===e?'selected':''}>${e}</option>`).join('');
+  const fa=document.getElementById('f-area'),va=fa.value;
+  fa.innerHTML='<option value="">Todas las áreas</option>'+areas.map(a=>`<option ${va===a?'selected':''}>${a}</option>`).join('');
+  const fp=document.getElementById('f-persona'),vp=fp.value;
+  fp.innerHTML='<option value="">Todas las personas</option>'+personas.map(p=>`<option value="${p.id}" ${vp==p.id?'selected':''}>${p.nombre}</option>`).join('');
+  document.getElementById('dl-emp').innerHTML=empresas.map(e=>`<option value="${e}">`).join('');
+  document.getElementById('dl-are').innerHTML=areas.map(a=>`<option value="${a}">`).join('');
+}
+
+// ══════════════════ RENDER TASKS ══════════════════
+function renderTareas(){
+  if(!currentUser) return;
+  populateFilters();
+  const search   =document.getElementById('search').value.toLowerCase();
+  const fEmpresa =currentUser.isOwner?document.getElementById('f-empresa').value:'';
+  const fArea    =currentUser.isOwner?document.getElementById('f-area').value:'';
+  const fPersona =currentUser.isOwner?document.getElementById('f-persona').value:'';
+  const fEstado  =document.getElementById('f-estado').value;
+  const hoy      =new Date().toISOString().split('T')[0];
+  const manana   =(()=>{const d=new Date();d.setDate(d.getDate()+1);return d.toISOString().split('T')[0];})();
+
+  const base=currentUser.isOwner?tasks:tasks.filter(t=>t.personaId===currentUser.id);
+
+  const filtered=base.filter(t=>
+    (!search||t.titulo.toLowerCase().includes(search)||(t.desc||'').toLowerCase().includes(search))&&
+    (!fEmpresa||t.empresa===fEmpresa)&&(!fArea||t.area===fArea)&&
+    (!fPersona||t.personaId==fPersona)&&(!fEstado||t.estado===fEstado)
+  ).sort((a,b)=>{
+    const aV=a.fecha&&a.fecha<hoy&&a.estado!=='completada';
+    const bV=b.fecha&&b.fecha<hoy&&b.estado!=='completada';
+    if(aV&&!bV)return -1; if(!aV&&bV)return 1;
+    return (a.fecha||'9999')<(b.fecha||'9999')?-1:1;
+  });
+
+  const container=document.getElementById('tasks-list');
+  if(!filtered.length){ container.innerHTML=`<div class="empty"><div class="icon">📭</div><p>No hay tareas que mostrar.<br>¡Crea la primera!</p></div>`; return; }
+
+  const sMap={pendiente:'⏳ Pendiente','en-progreso':'🔵 En progreso',revision:'🟡 En revisión',completada:'✅ Completada'};
+  const pMap={alta:'🔴 Alta',media:'🟡 Media',baja:'🟢 Baja'};
+  const isOwner=currentUser.isOwner;
+
+  container.innerHTML=filtered.map(t=>{
+    const persona  =personas.find(p=>p.id==t.personaId);
+    const vencida  =t.fecha&&t.fecha<hoy&&t.estado!=='completada';
+    const esHoy    =t.fecha&&t.fecha===hoy&&t.estado!=='completada';
+    const esManana =t.fecha&&t.fecha===manana&&t.estado!=='completada';
+    const fLabel   =t.fecha?new Date(t.fecha+'T12:00:00').toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'}):'';
+    const fClass   =vencida?'tag-vencida':esHoy||esManana?'tag-hoy':'tag-fecha';
+    const fSuffix  =vencida?' ⚠️ VENCIDA':esHoy?' 🔴 HOY':esManana?' 🟡 Mañana':'';
+    const comments =t.comments||[];
+    const isMine      =t.createdBy===currentUser.id;
+    const ownerCanEdit=isOwner&&(vencida||(t.avance||0)===0); // owner edits only vencida or sin avance
+    const canEdit     =ownerCanEdit||(isMine&&t.personaId===currentUser.id);
+    const canDelete   =isOwner||isMine;
+
+    return `<div class="task-card ${t.prioridad}" id="card-${t.id}">
+      <div class="task-header">
+        <div class="task-title">${t.titulo}${isMine&&!isOwner?'<span class="tag tag-self" style="margin-left:8px;font-size:10px;">Creada por ti</span>':''}</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;">
+          <span class="tag" style="background:#f5f5f5;color:#555;">${pMap[t.prioridad]||''}</span>
+          <span class="status status-${t.estado}">${sMap[t.estado]||t.estado}</span>
+        </div>
+      </div>
+      <div class="task-meta">
+        ${t.empresa?`<span class="tag tag-empresa">🏢 ${t.empresa}</span>`:''}
+        ${t.area?`<span class="tag tag-area">📁 ${t.area}</span>`:''}
+        ${persona&&isOwner?`<span class="tag tag-persona">👤 ${persona.nombre}</span>`:''}
+        ${t.fecha?`<span class="tag ${fClass}">📅 ${fLabel}${fSuffix}</span>`:''}
+        ${t.recurrencia?`<span class="tag tag-recur">🔁 ${recurLabel[t.recurrencia]||t.recurrencia}</span>`:''}
+      </div>
+      ${t.desc?`<div class="task-desc">${t.desc}</div>`:''}
+      <div class="progress-bar"><div class="progress-fill" style="width:${t.avance||0}%"></div></div>
+      <div class="progress-label">Avance: ${t.avance||0}%</div>
+      <div class="task-actions">
+        ${canEdit?`<button class="btn btn-sm btn-ghost" onclick="openModal('${t.id}')">✏️ Editar</button>`:''}
+        <button class="btn btn-sm btn-ghost" onclick="toggleComments('${t.id}')">💬 ${comments.length?comments.length+' comentario'+(comments.length!==1?'s':''):'Comentarios'}</button>
+        ${t.estado!=='completada'?`<button class="btn btn-sm btn-success" onclick="qs('${t.id}','completada')">✅ Completar</button>`:''}
+        ${t.estado==='pendiente'?`<button class="btn btn-sm btn-warning" onclick="qs('${t.id}','en-progreso')">▶️ Iniciar</button>`:''}
+        ${t.estado==='en-progreso'?`<button class="btn btn-sm btn-ghost" onclick="qs('${t.id}','revision')">🔍 Revisar</button>`:''}
+        ${canDelete?`<button class="btn btn-sm btn-danger" style="margin-left:auto" onclick="delTask('${t.id}')">🗑</button>`:''}
+      </div>
+      <div class="comments-section" id="comments-${t.id}">
+        ${comments.map(c=>`<div class="comment"><div class="cmeta">${c.autor} · ${c.fecha}</div>${c.texto}</div>`).join('')}
+        <div class="ci-row">
+          <input type="text" id="ci-${t.id}" placeholder="Escribe un comentario..." onkeydown="if(event.key==='Enter')addComment('${t.id}')">
+          <button class="btn btn-sm btn-primary" onclick="addComment('${t.id}')">Enviar</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════ COMMENTS ══════════════════
+function toggleComments(id){
+  document.getElementById('comments-'+id).classList.toggle('open');
+}
+function addComment(id){
+  const inp=document.getElementById('ci-'+id);
+  const txt=inp.value.trim(); if(!txt) return;
+  const t=tasks.find(x=>x.id===id); if(!t) return;
+  if(!t.comments) t.comments=[];
+  const autor=currentUser.isOwner?'Administrador':currentUser.nombre;
+  t.comments.push({
+    texto:txt, autor,
+    autorId: currentUser.id,
+    ts: Date.now(),
+    fecha:new Date().toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})
+  });
+  logActivity(`💬 ${autor} comentó en "<strong>${t.titulo}</strong>"`);
+  // Notify the task owner if it's not themselves commenting
+  if(t.personaId && t.personaId !== currentUser.id){
+    const dest=personas.find(p=>p.id===t.personaId);
+    if(dest) pushNotif('💬 Nuevo comentario', `${autor} comentó en "${t.titulo}"`, '💬');
+  }
+  // Also notify owner if a non-owner commented
+  if(!currentUser.isOwner){
+    pushNotif('💬 Nuevo comentario', `${autor} comentó en "${t.titulo}"`, '💬');
+  }  inp.value=''; persist(); renderTareas();
+  setTimeout(()=>{ const el=document.getElementById('comments-'+id); if(el)el.classList.add('open'); },40);
+  toast('💬 Comentario agregado');
+}
+
+// ══════════════════ QUICK STATUS ══════════════════
+function nextRecurDate(fechaStr, recurrencia){
+  if(!fechaStr||!recurrencia) return null;
+  const d=new Date(fechaStr+'T12:00:00');
+  const map={
+    diaria:1, semanal:7, quincenal:15,
+    mensual:'1m', bimestral:'2m', trimestral:'3m',
+    semestral:'6m', anual:'12m'
+  };
+  const v=map[recurrencia];
+  if(!v) return null;
+  if(typeof v==='number'){ d.setDate(d.getDate()+v); }
+  else { d.setMonth(d.getMonth()+parseInt(v)); }
+  return d.toISOString().split('T')[0];
+}
+
+const recurLabel={diaria:'Diaria',semanal:'Semanal',quincenal:'Quincenal',mensual:'Mensual',bimestral:'Bimestral',trimestral:'Trimestral',semestral:'Semestral',anual:'Anual'};
+
+function qs(id,estado){
+  const t=tasks.find(x=>x.id===id); if(!t) return;
+  t.estado=estado;
+  if(estado==='completada') t.avance=100;
+  const who=currentUser.isOwner?'Administrador':currentUser.nombre;
+  const sMap={pendiente:'Pendiente','en-progreso':'En progreso',revision:'En revisión',completada:'Completada'};
+  logActivity(`🔄 ${who} cambió "<strong>${t.titulo}</strong>" → ${sMap[estado]}`);
+
+  // Auto-create next occurrence if recurring and just completed
+  if(estado==='completada' && t.recurrencia){
+    const nextFecha=nextRecurDate(t.fecha, t.recurrencia);
+    const newTask={
+      id: Date.now().toString(),
+      comments:[], createdBy:t.createdBy, createdAt:Date.now(),
+      titulo:t.titulo, desc:t.desc, empresa:t.empresa, area:t.area,
+      personaId:t.personaId, fecha:nextFecha||'',
+      prioridad:t.prioridad, estado:'pendiente', avance:0,
+      recurrencia:t.recurrencia
+    };
+    tasks.push(newTask);
+    const rLabel=recurLabel[t.recurrencia]||t.recurrencia;
+    logActivity(`🔁 Tarea recurrente renovada: <strong>${t.titulo}</strong> (${rLabel})`);
+    if(nextFecha){
+      const fd=new Date(nextFecha+'T12:00:00').toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'});
+      toast(`🔁 Próxima ocurrencia creada para el ${fd}`);
+    } else {
+      toast('🔁 Nueva ocurrencia creada');
+    }
+  } else {
+    toast('✅ Estado actualizado');
+  }
+
+  persist(); renderTareas();
+}
+
+function delTask(id){
+  if(!confirm('¿Eliminar esta tarea?')) return;
+  const t=tasks.find(x=>x.id===id);
+  const who=currentUser.isOwner?'Administrador':currentUser.nombre;
+  logActivity(`🗑 ${who} eliminó "<strong>${t?.titulo||id}</strong>"`);
+  tasks=tasks.filter(x=>x.id!==id);
+  persist(); renderTareas(); toast('🗑 Tarea eliminada');
+}
+
+// ══════════════════ TASK MODAL ══════════════════
+function openModal(id=null){
+  editingId=id;
+  document.getElementById('modal-title').textContent=id?'Editar Tarea':'Nueva Tarea';
+  const isOwner=currentUser.isOwner;
+
+  // Show/hide person assignment
+  document.getElementById('owner-assign-row').style.display=isOwner?'':'none';
+  document.getElementById('user-fecha-row').style.display=isOwner?'none':'';
+
+  if(isOwner){
+    const ps=document.getElementById('f-per');
+    ps.innerHTML='<option value="">— Persona —</option>'+personas.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
+  }
+
+  if(id){
+    const t=tasks.find(x=>x.id===id);
+    document.getElementById('f-titulo').value=t.titulo;
+    document.getElementById('f-desc').value=t.desc||'';
+    document.getElementById('f-emp').value=t.empresa||'';
+    document.getElementById('f-are').value=t.area||'';
+    if(isOwner){
+      document.getElementById('f-per').value=t.personaId||'';
+      document.getElementById('f-fecha').value=t.fecha||'';
+    } else {
+      document.getElementById('f-fecha-u').value=t.fecha||'';
+    }
+    document.getElementById('f-prio').value=t.prioridad||'media';
+    document.getElementById('f-est').value=t.estado||'pendiente';
+    document.getElementById('f-av').value=t.avance||0;
+    document.getElementById('av-val').textContent=t.avance||0;
+    document.getElementById('f-recur').value=t.recurrencia||'';
+    document.getElementById('recur-hint').style.display=t.recurrencia?'block':'none';
+  } else {
+    ['f-titulo','f-desc','f-emp','f-are'].forEach(x=>document.getElementById(x).value='');
+    if(isOwner){ document.getElementById('f-per').value=''; document.getElementById('f-fecha').value=''; }
+    else { document.getElementById('f-fecha-u').value=''; }
+    document.getElementById('f-prio').value='media';
+    document.getElementById('f-est').value='pendiente';
+    document.getElementById('f-av').value=0;
+    document.getElementById('av-val').textContent=0;
+    document.getElementById('f-recur').value='';
+    document.getElementById('recur-hint').style.display='none';
+  }
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal(){ document.getElementById('modal').classList.remove('open'); editingId=null; }
+
+function saveTask(){
+  const titulo=document.getElementById('f-titulo').value.trim();
+  if(!titulo){ alert('El título es obligatorio'); return; }
+  const isOwner=currentUser.isOwner;
+  const fecha=isOwner?document.getElementById('f-fecha').value:document.getElementById('f-fecha-u').value;
+  const personaId=isOwner?document.getElementById('f-per').value:currentUser.id;
+
+  const data={
+    titulo,
+    desc:document.getElementById('f-desc').value.trim(),
+    empresa:document.getElementById('f-emp').value.trim(),
+    area:document.getElementById('f-are').value.trim(),
+    personaId,fecha,
+    prioridad:document.getElementById('f-prio').value,
+    estado:document.getElementById('f-est').value,
+    avance:parseInt(document.getElementById('f-av').value),
+    recurrencia:document.getElementById('f-recur').value||''
+  };
+
+  const who=isOwner?'Administrador':currentUser.nombre;
+
+  if(editingId){
+    const i=tasks.findIndex(t=>t.id===editingId);
+    const prevPersonaId=tasks[i].personaId;
+    tasks[i]={...tasks[i],...data};
+    logActivity(`✏️ ${who} editó "<strong>${titulo}</strong>"`);
+    // Notify if reassigned to a different person
+    if(data.personaId && data.personaId!==prevPersonaId){
+      const dest=personas.find(p=>p.id===data.personaId);
+      if(dest) pushNotif('📋 Tarea reasignada', `"${titulo}" fue asignada a ${dest.nombre}`, '📋');
+    }
+  } else {
+    tasks.push({id:Date.now().toString(),comments:[],createdBy:currentUser.id,createdAt:Date.now(),...data});
+    logActivity(`➕ ${who} creó "<strong>${titulo}</strong>"`);
+    // Notify assigned person
+    if(data.personaId){
+      const dest=personas.find(p=>p.id===data.personaId);
+      if(dest) pushNotif('📋 Nueva tarea asignada', `"${titulo}" fue asignada a ${dest.nombre}`, '📋');
+    }
+  }
+  persist(); closeModal(); renderTareas();
+  toast('💾 Tarea guardada');
+}
+
+// ══════════════════ KANBAN ══════════════════
+function renderKanban(){
+  if(!currentUser) return;
+  const base=currentUser.isOwner?tasks:tasks.filter(t=>t.personaId===currentUser.id);
+  ['pendiente','en-progreso','revision','completada'].forEach(estado=>{
+    const col=document.getElementById('k-'+estado);
+    const st=base.filter(t=>t.estado===estado);
+    col.innerHTML=st.length?st.map(t=>{
+      const p=personas.find(x=>x.id==t.personaId);
+      return `<div class="kcard">
+        <div class="kt">${t.titulo}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">
+          ${t.empresa&&currentUser.isOwner?`<span class="tag tag-empresa" style="font-size:10px;">${t.empresa}</span>`:''}
+          ${p&&currentUser.isOwner?`<span class="tag tag-persona" style="font-size:10px;">${p.nombre}</span>`:''}
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${t.avance||0}%"></div></div>
+        <div class="progress-label">${t.avance||0}%</div>
+      </div>`;
+    }).join(''):'<div style="color:#bbb;font-size:12px;text-align:center;padding:16px;">Sin tareas</div>';
+  });
+}
+
+// ══════════════════ PERSONAS ══════════════════
+let tempEmpresas=[]; // holds chips while modal is open
+
+function addEmpresaChip(){
+  const inp=document.getElementById('p-emp-input');
+  const val=inp.value.trim();
+  if(!val) return;
+  if(tempEmpresas.includes(val)){ inp.value=''; return; }
+  tempEmpresas.push(val);
+  inp.value='';
+  renderChips();
+}
+
+function removeEmpresaChip(name){
+  tempEmpresas=tempEmpresas.filter(e=>e!==name);
+  renderChips();
+}
+
+function renderChips(){
+  document.getElementById('p-emp-chips').innerHTML=tempEmpresas.map(e=>
+    `<span class="chip">🏢 ${e}<button class="chip-x" onclick="removeEmpresaChip('${e.replace(/'/g,"\\'")}')">×</button></span>`
+  ).join('');
+}
+
+function openPersonaModal(id=null){
+  editingPId=id;
+  document.getElementById('pm-title').textContent=id?'Editar Persona':'Nueva Persona';
+  // Populate datalist with existing empresas
+  const allEmpresas=[...new Set(tasks.map(t=>t.empresa).filter(Boolean))];
+  document.getElementById('dl-emp-p').innerHTML=allEmpresas.map(e=>`<option value="${e}">`).join('');
+  if(id){
+    const p=personas.find(x=>x.id===id);
+    document.getElementById('p-nombre').value=p.nombre;
+    document.getElementById('p-cargo').value=p.cargo||'';
+    // Support both old string and new array format
+    tempEmpresas=Array.isArray(p.empresas)?[...p.empresas]:(p.empresa?[p.empresa]:[]);
+    document.getElementById('p-pin').value='';
+  } else {
+    document.getElementById('p-nombre').value='';
+    document.getElementById('p-cargo').value='';
+    document.getElementById('p-pin').value='';
+    tempEmpresas=[];
+  }
+  document.getElementById('p-emp-input').value='';
+  renderChips();
+  document.getElementById('persona-modal').classList.add('open');
+}
+function closePersonaModal(){ document.getElementById('persona-modal').classList.remove('open'); editingPId=null; }
+
+function savePersona(){
+  const nombre=document.getElementById('p-nombre').value.trim();
+  const pin=document.getElementById('p-pin').value.trim();
+  if(!nombre){ alert('El nombre es obligatorio'); return; }
+  if(!editingPId&&pin.length<4){ alert('El PIN debe tener al menos 4 dígitos'); return; }
+  // Also add whatever is typed but not yet chipped
+  const typed=document.getElementById('p-emp-input').value.trim();
+  if(typed&&!tempEmpresas.includes(typed)) tempEmpresas.push(typed);
+  const empresas=[...tempEmpresas];
+  if(editingPId){
+    const i=personas.findIndex(p=>p.id===editingPId);
+    personas[i]={...personas[i],nombre,cargo:document.getElementById('p-cargo').value.trim(),empresas,...(pin.length>=4?{pin}:{})};
+    logActivity(`👤 Persona actualizada: <strong>${nombre}</strong>`);
+    toast('✅ Persona actualizada');
+  } else {
+    personas.push({id:Date.now().toString(),nombre,cargo:document.getElementById('p-cargo').value.trim(),empresas,pin});
+    logActivity(`👤 Nueva persona: <strong>${nombre}</strong>`);
+    toast('✅ Persona agregada');
+  }
+  persist(); closePersonaModal(); renderPersonas(); buildLoginSel();
+}
+
+function renderPersonas(){
+  const grid=document.getElementById('people-grid');
+  if(!personas.length){ grid.innerHTML=`<div class="empty"><div class="icon">👥</div><p>Agrega las personas de tu equipo</p></div>`; return; }
+  grid.innerHTML=personas.map(p=>{
+    const initials=p.nombre.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    const activas=tasks.filter(t=>t.personaId==p.id&&t.estado!=='completada').length;
+    const total2=tasks.filter(t=>t.personaId==p.id).length;
+    // Support both old string and new array
+    const emps=Array.isArray(p.empresas)?p.empresas:(p.empresa?[p.empresa]:[]);
+    const empTags=emps.length
+      ? emps.map(e=>`<span class="tag tag-empresa" style="font-size:11px;">🏢 ${e}</span>`).join('')
+      : '<span style="font-size:12px;color:#bbb;">Sin empresa</span>';
+    return `<div class="pcard">
+      <div class="avatar">${initials}</div>
+      <h3>${p.nombre}</h3>
+      <div class="pmeta">${p.cargo||'Sin cargo'}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-bottom:10px;">${empTags}</div>
+      <span class="ptc">${activas} activa${activas!==1?'s':''} / ${total2} total</span>
+      <span class="pin-badge ${p.pin?'set':''}">${p.pin?'🔐 PIN configurado':'⚠️ Sin PIN'}</span>
+      <div style="margin-top:10px;display:flex;gap:6px;justify-content:center;">
+        <button class="btn btn-sm btn-ghost" onclick="openPersonaModal('${p.id}')">✏️ Editar</button>
+        <button class="btn btn-sm btn-danger" onclick="delPersona('${p.id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function delPersona(id){
+  if(!confirm('¿Eliminar esta persona?')) return;
+  const p=personas.find(x=>x.id===id);
+  logActivity(`🗑 Persona eliminada: <strong>${p?.nombre||id}</strong>`);
+  personas=personas.filter(x=>x.id!==id);
+  persist(); renderPersonas(); buildLoginSel();
+}
+
+// ══════════════════ BACKUP / RESTORE ══════════════════
+function openBackupModal(){
+  const stats=document.getElementById('backup-stats');
+  const hoyStr=new Date().toISOString().split('T')[0];
+  const venc=tasks.filter(t=>t.fecha&&t.fecha<hoyStr&&t.estado!=='completada').length;
+  stats.innerHTML=`
+    🗂 <strong>${tasks.length}</strong> tareas guardadas &nbsp;·&nbsp;
+    👥 <strong>${personas.length}</strong> personas &nbsp;·&nbsp;
+    ⚠️ <strong>${venc}</strong> vencidas<br>
+    <span style="font-size:11px;color:#aaa;margin-top:4px;display:block;">Último respaldo recomendado: hoy</span>
+  `;
+  document.getElementById('backup-modal').classList.add('open');
+}
+function closeBackupModal(){ document.getElementById('backup-modal').classList.remove('open'); }
+
+function exportBackup(){
+  const data={
+    version:1,
+    exportedAt: new Date().toISOString(),
+    tasks, personas, activity,
+    ownerPin
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const fecha=new Date().toISOString().split('T')[0];
+  a.href=url; a.download=`taskflow-respaldo-${fecha}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('✅ Respaldo descargado correctamente');
+  logActivity(`💾 Administrador exportó un respaldo`);
+  persist();
+}
+
+function importBackup(event){
+  const file=event.target.files[0]; if(!file) return;
+  if(!confirm('⚠️ Esto reemplazará TODOS los datos actuales con los del archivo. ¿Continuar?')){ event.target.value=''; return; }
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.tasks||!data.personas) throw new Error('Formato inválido');
+      tasks=data.tasks||[];
+      personas=data.personas||[];
+      activity=data.activity||[];
+      if(data.ownerPin){ ownerPin=data.ownerPin; store.setItem('tf3_owner_pin',ownerPin); }
+      persist();
+      closeBackupModal();
+      renderTareas();
+      buildLoginSel();
+      toast('✅ Datos restaurados correctamente');
+    } catch(err){
+      alert('❌ El archivo no es un respaldo válido de TaskFlow.');
+    }
+    event.target.value='';
+  };
+  reader.readAsText(file);
+}
+
+// ══════════════════ CLOSE ON OVERLAY ══════════════════
+['modal','persona-modal','backup-modal'].forEach(mid=>{
+  document.getElementById(mid).addEventListener('click',e=>{
+    if(e.target===document.getElementById(mid)){
+      if(mid==='modal')closeModal();
+      else if(mid==='persona-modal')closePersonaModal();
+      else closeBackupModal();
+    }
+  });
+});
+document.getElementById('login-pin').addEventListener('keydown',e=>{ if(e.key==='Enter')doLogin(); });
+document.getElementById('p-emp-input').addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();addEmpresaChip();} });
+
+// ══════════════════ INIT ══════════════════
+if(!_storageWorks){
+  document.getElementById('safari-warn').style.display='block';
+}
+buildLoginSel();
+</script>
+</body>
+</html>
