@@ -1,0 +1,2760 @@
+[index.html](https://github.com/user-attachments/files/26647542/index.html)
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="TaskFlow">
+    <title>TaskFlow - Gestión de Tareas</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            color: #333;
+        }
+
+        /* Navigation */
+        nav {
+            position: sticky;
+            top: 0;
+            background: #1a1a2e;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 3rem;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .logo-flow {
+            color: #6c63ff;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-tabs button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 0.5rem 0;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+
+        .nav-tabs button:hover {
+            border-bottom-color: #6c63ff;
+        }
+
+        .nav-tabs button.active {
+            border-bottom-color: #6c63ff;
+            color: #6c63ff;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .btn-exit, .btn-backup {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .btn-backup {
+            background: #4ecdc4;
+        }
+
+        .btn-exit:hover {
+            background: #ff5252;
+        }
+
+        .btn-backup:hover {
+            background: #45b8af;
+        }
+
+        /* Notification Bar */
+        .notification-bar {
+            background: #fff3cd;
+            border-bottom: 1px solid #ffc107;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .notification-content {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .notification-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .notification-item strong {
+            color: #856404;
+        }
+
+        .btn-dismiss {
+            background: none;
+            border: none;
+            color: #856404;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 4px solid #f0f2f5;
+            border-top: 4px solid #6c63ff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Main Container */
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #f0f2f5;
+            padding-bottom: 1rem;
+        }
+
+        .modal-header h2 {
+            color: #1a1a2e;
+            font-size: 1.5rem;
+        }
+
+        .btn-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .btn-close:hover {
+            color: #333;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: #6c63ff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a52d5;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(108, 99, 255, 0.3);
+        }
+
+        .btn-secondary {
+            background: #e9ecef;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #dee2e6;
+        }
+
+        .btn-danger {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #ff5252;
+        }
+
+        .btn-success {
+            background: #51cf66;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #40c057;
+        }
+
+        .btn-sm {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0.5rem;
+        }
+
+        /* Form Controls */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+
+        input, select, textarea, datalist {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #6c63ff;
+            box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
+        }
+
+        input[type="range"] {
+            padding: 0;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-row.full {
+            grid-template-columns: 1fr;
+        }
+
+        /* Dashboard */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .kpi-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .kpi-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #6c63ff;
+            margin: 0.5rem 0;
+        }
+
+        .kpi-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .company-breakdown {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .company-breakdown h3 {
+            margin-bottom: 1rem;
+            color: #1a1a2e;
+        }
+
+        .breakdown-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .breakdown-table th,
+        .breakdown-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .breakdown-table th {
+            background: #f0f2f5;
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #6c63ff, #a29bfe);
+            transition: width 0.3s;
+        }
+
+        .workload-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .workload-section h3 {
+            margin-bottom: 1.5rem;
+            color: #1a1a2e;
+        }
+
+        .workload-item {
+            margin-bottom: 1.5rem;
+        }
+
+        .workload-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .workload-stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .stat-active { color: #6c63ff; }
+        .stat-completed { color: #51cf66; }
+        .stat-overdue { color: #ff6b6b; }
+
+        .risk-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .risk-section h3 {
+            margin-bottom: 1rem;
+            color: #1a1a2e;
+        }
+
+        .risk-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .risk-table th,
+        .risk-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .risk-table th {
+            background: #f0f2f5;
+            font-weight: 600;
+        }
+
+        .risk-high { color: #ff6b6b; font-weight: 600; }
+        .risk-medium { color: #ffa500; font-weight: 600; }
+
+        .activity-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .activity-section h3 {
+            margin-bottom: 1rem;
+            color: #1a1a2e;
+        }
+
+        .activity-list {
+            list-style: none;
+        }
+
+        .activity-item {
+            padding: 1rem;
+            border-left: 4px solid #6c63ff;
+            margin-bottom: 0.5rem;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        .activity-text {
+            color: #333;
+            margin-bottom: 0.3rem;
+        }
+
+        .activity-time {
+            color: #999;
+            font-size: 0.85rem;
+        }
+
+        /* Tareas Page */
+        .toolbar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .toolbar input[type="search"] {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .toolbar select {
+            width: auto;
+        }
+
+        .tasks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .task-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .task-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            transform: translateY(-4px);
+        }
+
+        .task-card-left-border {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+        }
+
+        .task-card-left-border.alta {
+            background: #ff6b6b;
+        }
+
+        .task-card-left-border.media {
+            background: #ffa500;
+        }
+
+        .task-card-left-border.baja {
+            background: #51cf66;
+        }
+
+        .task-card-header {
+            padding: 1.5rem;
+            position: relative;
+            padding-left: 1.5rem;
+            border-bottom: 1px solid #f0f2f5;
+        }
+
+        .task-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 0.5rem;
+            word-break: break-word;
+        }
+
+        .task-description {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .task-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #f0f2f5;
+            color: #333;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .tag.empresa {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .tag.area {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .tag.persona {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .tag.date {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .tag.recurrence {
+            background: #fce4ec;
+            color: #c2185b;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .status-badge.pendiente { background: #fff3cd; color: #856404; }
+        .status-badge.en-progreso { background: #cce5ff; color: #0c63e4; }
+        .status-badge.en-revision { background: #ffe5cc; color: #e65100; }
+        .status-badge.completada { background: #d4edda; color: #155724; }
+
+        .task-progress {
+            margin-bottom: 1rem;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            margin-bottom: 0.3rem;
+            color: #666;
+        }
+
+        .task-card-footer {
+            padding: 1rem 1.5rem;
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+
+        .task-action-btn {
+            flex: 1;
+            min-width: 80px;
+            padding: 0.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            background: #f0f2f5;
+            color: #333;
+            transition: all 0.3s;
+        }
+
+        .task-action-btn:hover {
+            background: #6c63ff;
+            color: white;
+        }
+
+        .comments-section {
+            display: none;
+            border-top: 1px solid #f0f2f5;
+            padding: 1rem 1.5rem;
+        }
+
+        .comments-section.active {
+            display: block;
+        }
+
+        .comments-list {
+            margin-bottom: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .comment-item {
+            background: #f9f9f9;
+            padding: 0.75rem;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .comment-author {
+            font-weight: 600;
+            color: #6c63ff;
+        }
+
+        .comment-time {
+            color: #999;
+            font-size: 0.8rem;
+        }
+
+        .comment-text {
+            color: #333;
+            margin-top: 0.3rem;
+        }
+
+        .comment-input-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .comment-input-group input {
+            flex: 1;
+            padding: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .comment-input-group button {
+            padding: 0.5rem 1rem;
+            background: #6c63ff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Kanban */
+        .kanban-board {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            padding-bottom: 2rem;
+        }
+
+        .kanban-column {
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .kanban-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #6c63ff;
+        }
+
+        .kanban-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .kanban-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            cursor: move;
+            transition: all 0.3s;
+        }
+
+        .kanban-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .kanban-card-title {
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 0.5rem;
+        }
+
+        .kanban-card-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .priority-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+
+        .priority-dot.alta { background: #ff6b6b; }
+        .priority-dot.media { background: #ffa500; }
+        .priority-dot.baja { background: #51cf66; }
+
+        /* Personas Page */
+        .personas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+            padding-bottom: 2rem;
+        }
+
+        .persona-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .persona-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            transform: translateY(-4px);
+        }
+
+        .persona-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6c63ff, #a29bfe);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 0 auto 1rem;
+        }
+
+        .persona-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 0.5rem;
+        }
+
+        .persona-role {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .persona-companies {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .persona-company {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .persona-stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 1rem 0;
+            padding: 1rem 0;
+            border-top: 1px solid #f0f2f5;
+            border-bottom: 1px solid #f0f2f5;
+        }
+
+        .persona-stat {
+            text-align: center;
+        }
+
+        .persona-stat-value {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #6c63ff;
+        }
+
+        .persona-stat-label {
+            font-size: 0.75rem;
+            color: #999;
+        }
+
+        .persona-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .persona-actions button {
+            flex: 1;
+        }
+
+        /* Login Screen */
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #6c63ff, #a29bfe);
+        }
+
+        .login-box {
+            background: white;
+            padding: 3rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .login-logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-logo h1 {
+            font-size: 2.5rem;
+            color: #1a1a2e;
+        }
+
+        .login-logo .logo-flow {
+            color: #6c63ff;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .login-form label {
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+
+        .login-form input,
+        .login-form select {
+            padding: 0.8rem;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .login-form input:focus,
+        .login-form select:focus {
+            outline: none;
+            border-color: #6c63ff;
+            box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
+        }
+
+        .login-form button {
+            padding: 0.8rem;
+            background: #6c63ff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .login-form button:hover {
+            background: #5a52d5;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(108, 99, 255, 0.3);
+        }
+
+        .pin-input {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .pin-digit {
+            width: 50px;
+            height: 50px;
+            text-align: center;
+            font-size: 1.5rem;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-weight: bold;
+            transition: border-color 0.3s;
+        }
+
+        .pin-digit:focus {
+            outline: none;
+            border-color: #6c63ff;
+            box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
+        }
+
+        /* Chips */
+        .chips-input {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            min-height: 44px;
+            align-items: flex-start;
+        }
+
+        .chip {
+            background: #6c63ff;
+            color: white;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .chip-remove {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .chips-input input {
+            flex: 1;
+            min-width: 100px;
+            border: none;
+            padding: 0.5rem 0;
+            margin: 0;
+        }
+
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: #1a1a2e;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease;
+            z-index: 3000;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            nav {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .nav-left {
+                gap: 1rem;
+                width: 100%;
+            }
+
+            .nav-tabs {
+                gap: 1rem;
+                justify-content: space-around;
+                flex-wrap: wrap;
+            }
+
+            .nav-right {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .notification-bar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .notification-content {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .main-container {
+                padding: 1rem;
+            }
+
+            .kpi-grid {
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                gap: 0.8rem;
+            }
+
+            .tasks-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .kanban-board {
+                grid-template-columns: 1fr;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-content {
+                max-height: 95vh;
+            }
+
+            .login-box {
+                padding: 2rem;
+            }
+        }
+
+        /* Hidden */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Page sections */
+        .page-section {
+            display: none;
+        }
+
+        .page-section.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Modal -->
+    <div id="loginScreen" class="login-container">
+        <div class="login-box">
+            <div class="login-logo">
+                <h1>Task<span class="logo-flow">Flow</span></h1>
+            </div>
+            <form class="login-form" id="loginForm">
+                <div>
+                    <label>Selecciona tu persona:</label>
+                    <select id="personaSelect" required>
+                        <option value="">-- Seleccionar --</option>
+                        <option value="owner">Daniel Ceballos</option>
+                    </select>
+                </div>
+                <div>
+                    <label>PIN:</label>
+                    <div class="pin-input" id="pinInput"></div>
+                    <input type="hidden" id="pinValue">
+                </div>
+                <button type="button" onclick="loginUser()">Ingresar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Setup PIN Modal (Owner only) -->
+    <div id="setupPinModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Configurar PIN de Administrador</h2>
+            </div>
+            <form id="setupPinForm">
+                <div class="form-group">
+                    <label>Ingresa tu PIN (4-6 dígitos):</label>
+                    <input type="text" id="setupPinInput" placeholder="Ej: 1234" maxlength="6" pattern="\d{4,6}" required>
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('setupPinModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar PIN</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App (Hidden until login) -->
+    <div id="mainApp" class="hidden">
+        <!-- Navigation -->
+        <nav>
+            <div class="nav-left">
+                <div class="logo">Task<span class="logo-flow">Flow</span></div>
+                <ul class="nav-tabs">
+                    <li id="dashboardTabContainer" class="hidden"><button class="nav-btn" data-page="dashboard" onclick="switchPage('dashboard')">Panel</button></li>
+                    <li><button class="nav-btn active" data-page="tareas" onclick="switchPage('tareas')">Tareas</button></li>
+                    <li><button class="nav-btn" data-page="kanban" onclick="switchPage('kanban')">Kanban</button></li>
+                    <li id="personasTabContainer" class="hidden"><button class="nav-btn" data-page="personas" onclick="switchPage('personas')">Personas</button></li>
+                </ul>
+            </div>
+            <div class="nav-right">
+                <div class="nav-user">
+                    <span id="currentUserDisplay"></span>
+                    <button id="backupBtn" class="btn-backup hidden" title="Descargar/Restaurar datos" onclick="openModal('backupModal')">💾</button>
+                    <button class="btn-exit" onclick="logout()">Salir</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Notification Bar -->
+        <div id="notificationBar" class="notification-bar hidden">
+            <div class="notification-content" id="notificationContent"></div>
+            <button class="btn-dismiss" onclick="dismissNotifications()">✕</button>
+        </div>
+
+        <!-- Dashboard Page -->
+        <div id="dashboardPage" class="page-section active">
+            <div class="main-container">
+                <h2 style="margin-bottom: 2rem; color: #1a1a2e;">Panel de Control</h2>
+
+                <div class="kpi-grid" id="kpiGrid"></div>
+
+                <div class="company-breakdown">
+                    <h3>Resumen por Empresa</h3>
+                    <table class="breakdown-table">
+                        <thead>
+                            <tr>
+                                <th>Empresa</th>
+                                <th>Total</th>
+                                <th>En Progreso</th>
+                                <th>Completadas</th>
+                                <th>Retrasadas</th>
+                                <th>Progreso</th>
+                            </tr>
+                        </thead>
+                        <tbody id="companyBreakdownBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="workload-section">
+                    <h3>Carga de Trabajo del Equipo</h3>
+                    <div id="workloadItems"></div>
+                </div>
+
+                <div class="risk-section">
+                    <h3>⚠️ Tareas en Riesgo</h3>
+                    <table class="risk-table">
+                        <thead>
+                            <tr>
+                                <th>Tarea</th>
+                                <th>Persona</th>
+                                <th>Empresa</th>
+                                <th>Fecha</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="riskTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="activity-section">
+                    <h3>Actividad Reciente</h3>
+                    <ul class="activity-list" id="activityList"></ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tareas Page -->
+        <div id="tareasPage" class="page-section">
+            <div class="main-container">
+                <h2 style="margin-bottom: 2rem; color: #1a1a2e;">Tareas</h2>
+
+                <div class="toolbar">
+                    <button class="btn btn-primary" onclick="openModal('taskModal')">+ Nueva Tarea</button>
+                    <input type="search" id="searchInput" placeholder="Buscar tareas..." onkeyup="filterTasks()">
+                    <select id="filterEmpresa" onchange="filterTasks()">
+                        <option value="">Todas las empresas</option>
+                        <option value="Dynamik">Dynamik</option>
+                        <option value="Deli Restaurante">Deli Restaurante</option>
+                    </select>
+                    <select id="filterArea" onchange="filterTasks()">
+                        <option value="">Todas las áreas</option>
+                    </select>
+                    <select id="filterPersona" class="hidden" onchange="filterTasks()">
+                        <option value="">Todas las personas</option>
+                    </select>
+                    <select id="filterEstado" onchange="filterTasks()">
+                        <option value="">Todos los estados</option>
+                        <option value="pendiente">Pendiente</option>
+                        <option value="en-progreso">En Progreso</option>
+                        <option value="en-revision">En Revisión</option>
+                        <option value="completada">Completada</option>
+                    </select>
+                </div>
+
+                <div class="tasks-grid" id="tasksGrid"></div>
+            </div>
+        </div>
+
+        <!-- Kanban Page -->
+        <div id="kanbanPage" class="page-section">
+            <div class="main-container">
+                <h2 style="margin-bottom: 2rem; color: #1a1a2e;">Kanban</h2>
+                <div class="kanban-board" id="kanbanBoard"></div>
+            </div>
+        </div>
+
+        <!-- Personas Page -->
+        <div id="personasPage" class="page-section">
+            <div class="main-container">
+                <h2 style="margin-bottom: 2rem; color: #1a1a2e;">Equipo</h2>
+                <button class="btn btn-primary" style="margin-bottom: 2rem;" onclick="openModal('personaModal')">+ Nueva Persona</button>
+                <div class="personas-grid" id="personasGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Modal -->
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="taskModalTitle">Nueva Tarea</h2>
+                <button class="btn-close" onclick="closeModal('taskModal')">✕</button>
+            </div>
+            <form id="taskForm">
+                <input type="hidden" id="taskId">
+                <div class="form-group">
+                    <label>Título *</label>
+                    <input type="text" id="taskTitulo" placeholder="Ej: Revisar reporte" required>
+                </div>
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <textarea id="taskDescripcion" placeholder="Detalles de la tarea..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Empresa *</label>
+                        <input type="text" id="taskEmpresa" list="empresaList" placeholder="Ej: Dynamik" required>
+                        <datalist id="empresaList">
+                            <option value="Dynamik">
+                            <option value="Deli Restaurante">
+                        </datalist>
+                    </div>
+                    <div class="form-group">
+                        <label>Área</label>
+                        <input type="text" id="taskArea" list="areaList" placeholder="Ej: Ventas">
+                        <datalist id="areaList">
+                            <option value="Ventas">
+                            <option value="Marketing">
+                            <option value="Operaciones">
+                            <option value="Finanzas">
+                            <option value="RRHH">
+                            <option value="Técnico">
+                        </datalist>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" id="personaFieldContainer">
+                        <label>Persona</label>
+                        <select id="taskPersona">
+                            <option value="">Sin asignar</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha</label>
+                        <input type="date" id="taskFecha">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Prioridad</label>
+                        <select id="taskPrioridad">
+                            <option value="baja">Baja</option>
+                            <option value="media" selected>Media</option>
+                            <option value="alta">Alta</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Estado</label>
+                        <select id="taskEstado">
+                            <option value="pendiente" selected>Pendiente</option>
+                            <option value="en-progreso">En Progreso</option>
+                            <option value="en-revision">En Revisión</option>
+                            <option value="completada">Completada</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Avance: <span id="avanceValue">0</span>%</label>
+                    <input type="range" id="taskAvance" min="0" max="100" value="0" onchange="updateAvanceDisplay()">
+                </div>
+                <div class="form-group">
+                    <label>Recurrencia</label>
+                    <select id="taskRecurrencia">
+                        <option value="">Ninguna</option>
+                        <option value="diaria">Diaria</option>
+                        <option value="semanal">Semanal</option>
+                        <option value="quincenal">Quincenal</option>
+                        <option value="mensual">Mensual</option>
+                        <option value="bimestral">Bimestral</option>
+                        <option value="trimestral">Trimestral</option>
+                        <option value="semestral">Semestral</option>
+                        <option value="anual">Anual</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('taskModal')">Cancelar</button>
+                    <button type="button" class="btn btn-danger hidden" id="deleteTaskBtn" onclick="deleteTask()">Eliminar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Persona Modal -->
+    <div id="personaModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="personaModalTitle">Nueva Persona</h2>
+                <button class="btn-close" onclick="closeModal('personaModal')">✕</button>
+            </div>
+            <form id="personaForm">
+                <input type="hidden" id="personaId">
+                <div class="form-group">
+                    <label>Nombre *</label>
+                    <input type="text" id="personaNombre" placeholder="Ej: Juan García" required>
+                </div>
+                <div class="form-group">
+                    <label>Cargo</label>
+                    <input type="text" id="personaCargo" placeholder="Ej: Gerente de Ventas">
+                </div>
+                <div class="form-group">
+                    <label>Empresas</label>
+                    <div class="chips-input" id="empresasChips">
+                        <input type="text" id="empresasInput" placeholder="Selecciona empresas..." list="empresaChipList">
+                        <datalist id="empresaChipList">
+                            <option value="Dynamik">
+                            <option value="Deli Restaurante">
+                        </datalist>
+                    </div>
+                    <input type="hidden" id="personaEmpresas">
+                </div>
+                <div class="form-group">
+                    <label>PIN (4-6 dígitos)</label>
+                    <input type="text" id="personaPin" placeholder="Ej: 1234" maxlength="6" pattern="\d{4,6}">
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('personaModal')">Cancelar</button>
+                    <button type="button" class="btn btn-danger hidden" id="deletePersonaBtn" onclick="deletePersona()">Eliminar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Backup Modal -->
+    <div id="backupModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Respaldo y Restauración</h2>
+                <button class="btn-close" onclick="closeModal('backupModal')">✕</button>
+            </div>
+            <div id="backupContent">
+                <div class="form-group">
+                    <h3>Estadísticas Actuales</h3>
+                    <p>Total de Tareas: <strong id="statsTaskCount">0</strong></p>
+                    <p>Total de Personas: <strong id="statsPersonaCount">0</strong></p>
+                    <p>Última actualización: <strong id="statsLastUpdate">-</strong></p>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button class="btn btn-success" onclick="exportBackup()">📥 Descargar Datos</button>
+                    <button class="btn btn-primary" onclick="document.getElementById('importFile').click()">📤 Restaurar Datos</button>
+                    <input type="file" id="importFile" accept=".json" onchange="importBackup()" style="display: none;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+    <script>
+        // Supabase Configuration
+        const SUPABASE_URL = 'https://cqdduvtohgknsniwjiiv.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_MV7GR-9XN1QXSUtq5L6Vdw_EzdHoyIs';
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // State
+        let currentUser = null;
+        let isOwner = false;
+        let personas = [];
+        let tasks = [];
+        let activity = [];
+        let areas = new Set();
+
+        // Generate Favicon
+        function generateFavicon() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 192;
+            canvas.height = 192;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#6c63ff';
+            ctx.fillRect(0, 0, 192, 192);
+
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 120px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('T', 96, 96);
+
+            const link = document.createElement('link');
+            link.rel = 'icon';
+            link.href = canvas.toDataURL();
+            document.head.appendChild(link);
+
+            const appleLink = document.createElement('link');
+            appleLink.rel = 'apple-touch-icon';
+            appleLink.href = canvas.toDataURL();
+            document.head.appendChild(appleLink);
+        }
+
+        generateFavicon();
+
+        // Request Notification Permission
+        function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        }
+
+        // Login Functions
+        async function initializeLogin() {
+            const {data: personas_data} = await sb.from('personas').select('*');
+            personas = personas_data || [];
+
+            const personaSelect = document.getElementById('personaSelect');
+            personas.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p.id;
+                option.textContent = p.nombre;
+                personaSelect.appendChild(option);
+            });
+
+            renderPinInput();
+        }
+
+        function renderPinInput() {
+            const pinInput = document.getElementById('pinInput');
+            pinInput.innerHTML = '';
+            for (let i = 0; i < 6; i++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.class = 'pin-digit';
+                input.className = 'pin-digit';
+                input.maxLength = '1';
+                input.pattern = '[0-9]';
+                input.addEventListener('input', (e) => {
+                    if (!/[0-9]/.test(e.target.value)) e.target.value = '';
+                    if (e.target.value && e.target.nextElementSibling) {
+                        e.target.nextElementSibling.focus();
+                    }
+                    updatePinValue();
+                });
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Backspace' && !e.target.value && e.target.previousElementSibling) {
+                        e.target.previousElementSibling.focus();
+                    }
+                });
+                pinInput.appendChild(input);
+            }
+        }
+
+        function updatePinValue() {
+            const digits = document.querySelectorAll('.pin-digit');
+            const pin = Array.from(digits).map(d => d.value).join('');
+            document.getElementById('pinValue').value = pin;
+        }
+
+        async function loginUser() {
+            const personaSelect = document.getElementById('personaSelect');
+            const pin = document.getElementById('pinValue').value;
+
+            if (!personaSelect.value || !pin) {
+                showToast('Por favor completa todos los campos');
+                return;
+            }
+
+            if (personaSelect.value === 'owner') {
+                const ownerPin = await getConfig('owner_pin');
+                if (!ownerPin) {
+                    openModal('setupPinModal');
+                    return;
+                }
+                if (pin !== ownerPin) {
+                    showToast('PIN incorrecto');
+                    return;
+                }
+                isOwner = true;
+                currentUser = {id: 'owner', nombre: 'Daniel Ceballos'};
+            } else {
+                const persona = personas.find(p => p.id === personaSelect.value);
+                if (!persona || persona.pin !== pin) {
+                    showToast('PIN incorrecto');
+                    return;
+                }
+                isOwner = false;
+                currentUser = persona;
+            }
+
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainApp').classList.remove('hidden');
+
+            updateNavigation();
+            await loadAllData();
+            renderDashboard();
+            renderTareas();
+            renderKanban();
+            renderPersonas();
+            requestNotificationPermission();
+            showNotifications();
+
+            await setConfig(`last_visit_${currentUser.id}`, new Date().toISOString());
+        }
+
+        async function setupOwnerPin() {
+            const pin = document.getElementById('setupPinInput').value;
+            if (!pin || !/^\d{4,6}$/.test(pin)) {
+                showToast('PIN debe ser 4-6 dígitos');
+                return;
+            }
+            await setConfig('owner_pin', pin);
+            closeModal('setupPinModal');
+            isOwner = true;
+            currentUser = {id: 'owner', nombre: 'Daniel Ceballos'};
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainApp').classList.remove('hidden');
+            updateNavigation();
+            await loadAllData();
+            renderDashboard();
+            renderTareas();
+            renderKanban();
+            renderPersonas();
+            requestNotificationPermission();
+        }
+
+        function updateNavigation() {
+            document.getElementById('currentUserDisplay').textContent = currentUser.nombre;
+
+            if (isOwner) {
+                document.getElementById('dashboardTabContainer').classList.remove('hidden');
+                document.getElementById('personasTabContainer').classList.remove('hidden');
+                document.getElementById('backupBtn').classList.remove('hidden');
+                document.getElementById('filterPersona').classList.remove('hidden');
+                document.getElementById('personaFieldContainer').classList.remove('hidden');
+                switchPage('dashboard');
+            } else {
+                document.getElementById('dashboardTabContainer').classList.add('hidden');
+                document.getElementById('personasTabContainer').classList.add('hidden');
+                document.getElementById('backupBtn').classList.add('hidden');
+                document.getElementById('filterPersona').classList.add('hidden');
+                document.getElementById('personaFieldContainer').classList.add('hidden');
+                switchPage('tareas');
+            }
+        }
+
+        function logout() {
+            if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
+                currentUser = null;
+                isOwner = false;
+                document.getElementById('mainApp').classList.add('hidden');
+                document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('personaSelect').value = '';
+                document.querySelectorAll('.pin-digit').forEach(d => d.value = '');
+                document.getElementById('pinValue').value = '';
+            }
+        }
+
+        // Supabase Data Functions
+        async function loadAllData() {
+            showSpinner();
+            try {
+                const [personas_data, tasks_data, activity_data] = await Promise.all([
+                    sb.from('personas').select('*'),
+                    sb.from('tasks').select('*'),
+                    sb.from('activity').select('*').order('created_at', {ascending: false}).limit(60)
+                ]);
+
+                personas = personas_data.data || [];
+                tasks = tasks_data.data || [];
+                activity = activity_data.data || [];
+
+                areas.clear();
+                tasks.forEach(t => {
+                    if (t.area) areas.add(t.area);
+                });
+
+                updateAreaFilters();
+            } catch (err) {
+                console.error('Error loading data:', err);
+                showToast('Error cargando datos');
+            }
+            hideSpinner();
+        }
+
+        async function saveTaskToDb(task) {
+            const {error} = await sb.from('tasks').upsert(task);
+            if (error) throw error;
+        }
+
+        async function deleteTaskFromDb(id) {
+            const {error} = await sb.from('tasks').delete().eq('id', id);
+            if (error) throw error;
+        }
+
+        async function savePersonaToDb(persona) {
+            const {error} = await sb.from('personas').upsert(persona);
+            if (error) throw error;
+        }
+
+        async function deletePersonaFromDb(id) {
+            const {error} = await sb.from('personas').delete().eq('id', id);
+            if (error) throw error;
+        }
+
+        async function logActivityToDb(texto) {
+            const tiempo = new Date().toLocaleString('es-CO', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+            const {error} = await sb.from('activity').insert({texto, tiempo});
+            if (error) throw error;
+        }
+
+        async function getConfig(key) {
+            const {data} = await sb.from('config').select('value').eq('key', key).single();
+            return data?.value || '';
+        }
+
+        async function setConfig(key, value) {
+            const {error} = await sb.from('config').upsert({key, value});
+            if (error) throw error;
+        }
+
+        // UI Functions
+        function showSpinner() {
+            const main = document.querySelector('.main-container') || document.getElementById('mainApp');
+            if (!document.getElementById('spinner')) {
+                const spinner = document.createElement('div');
+                spinner.id = 'spinner';
+                spinner.className = 'spinner';
+                spinner.style.position = 'fixed';
+                spinner.style.top = '50%';
+                spinner.style.left = '50%';
+                spinner.style.transform = 'translate(-50%, -50%)';
+                spinner.style.zIndex = '5000';
+                document.body.appendChild(spinner);
+            }
+        }
+
+        function hideSpinner() {
+            const spinner = document.getElementById('spinner');
+            if (spinner) spinner.remove();
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.remove('active');
+        }
+
+        function switchPage(pageName) {
+            document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageName + 'Page').classList.add('active');
+
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`[data-page="${pageName}"]`).classList.add('active');
+        }
+
+        // Dashboard
+        function renderDashboard() {
+            if (!isOwner) {
+                switchPage('tareas');
+                return;
+            }
+
+            const stats = calculateStats();
+            const kpiGrid = document.getElementById('kpiGrid');
+            kpiGrid.innerHTML = '';
+
+            const kpis = [
+                {label: 'Total de Tareas', value: stats.total},
+                {label: 'Pendientes', value: stats.pendiente},
+                {label: 'En Progreso', value: stats.enProgreso},
+                {label: 'Completadas', value: stats.completada},
+                {label: 'Retrasadas', value: stats.overdue},
+                {label: 'Vencen Hoy', value: stats.today},
+                {label: 'Progreso Global', value: stats.progress + '%'},
+                {label: 'Tamaño del Equipo', value: personas.length}
+            ];
+
+            kpis.forEach(kpi => {
+                const card = document.createElement('div');
+                card.className = 'kpi-card';
+                card.innerHTML = `
+                    <div class="kpi-label">${kpi.label}</div>
+                    <div class="kpi-value">${kpi.value}</div>
+                `;
+                kpiGrid.appendChild(card);
+            });
+
+            // Company Breakdown
+            const breakdown = document.getElementById('companyBreakdownBody');
+            breakdown.innerHTML = '';
+            ['Dynamik', 'Deli Restaurante'].forEach(empresa => {
+                const companyTasks = tasks.filter(t => t.empresa === empresa);
+                const total = companyTasks.length;
+                const inProgress = companyTasks.filter(t => t.estado === 'en-progreso').length;
+                const completed = companyTasks.filter(t => t.estado === 'completada').length;
+                const overdue = companyTasks.filter(t => isOverdue(t)).length;
+                const progress = total > 0 ? Math.round(companyTasks.reduce((sum, t) => sum + (t.avance || 0), 0) / total) : 0;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${empresa}</strong></td>
+                    <td>${total}</td>
+                    <td>${inProgress}</td>
+                    <td>${completed}</td>
+                    <td>${overdue}</td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progress}%"></div>
+                        </div>
+                        ${progress}%
+                    </td>
+                `;
+                breakdown.appendChild(row);
+            });
+
+            // Workload
+            const workloadItems = document.getElementById('workloadItems');
+            workloadItems.innerHTML = '';
+            personas.forEach(persona => {
+                const personaTasks = tasks.filter(t => t.persona_id === persona.id);
+                const active = personaTasks.filter(t => !['completada'].includes(t.estado)).length;
+                const completed = personaTasks.filter(t => t.estado === 'completada').length;
+                const overdue = personaTasks.filter(t => isOverdue(t)).length;
+
+                const item = document.createElement('div');
+                item.className = 'workload-item';
+                item.innerHTML = `
+                    <div class="workload-header">
+                        <span>${persona.nombre}</span>
+                        <div class="workload-stats">
+                            <span class="stat-active">Activas: ${active}</span>
+                            <span class="stat-completed">Completadas: ${completed}</span>
+                            <span class="stat-overdue">Retrasadas: ${overdue}</span>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${completed > 0 ? Math.round(completed / (active + completed) * 100) : 0}%"></div>
+                    </div>
+                `;
+                workloadItems.appendChild(item);
+            });
+
+            // Risk Table
+            const riskBody = document.getElementById('riskTableBody');
+            riskBody.innerHTML = '';
+            const riskTasks = tasks.filter(t => !['completada'].includes(t.estado) && (isOverdue(t) || isDueWithin3Days(t)));
+            riskTasks.forEach(task => {
+                const persona = personas.find(p => p.id === task.persona_id);
+                const row = document.createElement('tr');
+                const risk = isOverdue(task) ? 'risk-high' : 'risk-medium';
+                row.innerHTML = `
+                    <td>${task.titulo}</td>
+                    <td>${persona?.nombre || 'Sin asignar'}</td>
+                    <td>${task.empresa}</td>
+                    <td>${formatDate(task.fecha)}</td>
+                    <td><span class="${risk}">${isOverdue(task) ? '⚠️ Retrasada' : '🔴 Próxima'}</span></td>
+                `;
+                riskBody.appendChild(row);
+            });
+
+            // Activity
+            const activityList = document.getElementById('activityList');
+            activityList.innerHTML = '';
+            activity.slice(0, 15).forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'activity-item';
+                li.innerHTML = `
+                    <div class="activity-text">${item.texto}</div>
+                    <div class="activity-time">${item.tiempo}</div>
+                `;
+                activityList.appendChild(li);
+            });
+        }
+
+        function calculateStats() {
+            const userTasks = isOwner ? tasks : tasks.filter(t => t.persona_id === currentUser.id);
+            return {
+                total: userTasks.length,
+                pendiente: userTasks.filter(t => t.estado === 'pendiente').length,
+                enProgreso: userTasks.filter(t => t.estado === 'en-progreso').length,
+                completada: userTasks.filter(t => t.estado === 'completada').length,
+                overdue: userTasks.filter(t => isOverdue(t)).length,
+                today: userTasks.filter(t => isDueToday(t)).length,
+                progress: userTasks.length > 0 ? Math.round(userTasks.reduce((sum, t) => sum + (t.avance || 0), 0) / userTasks.length) : 0
+            };
+        }
+
+        // Tareas
+        function renderTareas() {
+            filterTasks();
+        }
+
+        function filterTasks() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const empresa = document.getElementById('filterEmpresa').value;
+            const area = document.getElementById('filterArea').value;
+            const persona = document.getElementById('filterPersona').value;
+            const estado = document.getElementById('filterEstado').value;
+
+            let filtered = tasks;
+
+            if (!isOwner) {
+                filtered = filtered.filter(t => t.persona_id === currentUser.id);
+            }
+
+            if (search) {
+                filtered = filtered.filter(t =>
+                    t.titulo.toLowerCase().includes(search) ||
+                    (t.descripcion || '').toLowerCase().includes(search)
+                );
+            }
+
+            if (empresa) {
+                filtered = filtered.filter(t => t.empresa === empresa);
+            }
+
+            if (area) {
+                filtered = filtered.filter(t => t.area === area);
+            }
+
+            if (persona) {
+                filtered = filtered.filter(t => t.persona_id === persona);
+            }
+
+            if (estado) {
+                filtered = filtered.filter(t => t.estado === estado);
+            }
+
+            // Sort: overdue first, then by date
+            filtered.sort((a, b) => {
+                if (isOverdue(a) && !isOverdue(b)) return -1;
+                if (!isOverdue(a) && isOverdue(b)) return 1;
+                return new Date(a.fecha || '9999-12-31') - new Date(b.fecha || '9999-12-31');
+            });
+
+            const grid = document.getElementById('tasksGrid');
+            grid.innerHTML = '';
+
+            filtered.forEach(task => {
+                const card = createTaskCard(task);
+                grid.appendChild(card);
+            });
+        }
+
+        function createTaskCard(task) {
+            const card = document.createElement('div');
+            card.className = 'task-card';
+            const persona = personas.find(p => p.id === task.persona_id);
+            const statusEmojis = {
+                'pendiente': '⏳',
+                'en-progreso': '🚀',
+                'en-revision': '👀',
+                'completada': '✓'
+            };
+
+            card.innerHTML = `
+                <div class="task-card-header" style="position: relative;">
+                    <div class="task-card-left-border ${task.prioridad}"></div>
+                    <div class="task-title">${task.titulo}</div>
+                    <div class="task-description">${task.descripcion || ''}</div>
+                    <div class="task-tags">
+                        <span class="tag empresa">${task.empresa}</span>
+                        ${task.area ? `<span class="tag area">${task.area}</span>` : ''}
+                        ${persona ? `<span class="tag persona">${persona.nombre}</span>` : ''}
+                        ${task.fecha ? `<span class="tag date">${formatDate(task.fecha)}</span>` : ''}
+                        ${task.recurrencia ? `<span class="tag recurrence">${capitalizeFirst(task.recurrencia)}</span>` : ''}
+                    </div>
+                    <span class="status-badge ${task.estado}">${statusEmojis[task.estado]} ${capitalizeFirst(task.estado.replace('-', ' '))}</span>
+                </div>
+                <div style="padding: 0 1.5rem;">
+                    <div class="task-progress">
+                        <div class="progress-label">
+                            <span>Avance</span>
+                            <span>${task.avance || 0}%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${task.avance || 0}%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="task-card-footer">
+                    <div class="task-actions">
+                        <button class="task-action-btn" onclick="changeTaskStatus('${task.id}')">Cambiar Estado</button>
+                        <button class="task-action-btn" onclick="editTask('${task.id}')">Editar</button>
+                        ${isOwner ? `<button class="task-action-btn" onclick="deleteTaskUI('${task.id}')">Eliminar</button>` : ''}
+                        <button class="task-action-btn" onclick="toggleComments('task-${task.id}')">💬</button>
+                    </div>
+                </div>
+                <div id="task-${task.id}" class="comments-section">
+                    <div class="comments-list" id="comments-${task.id}"></div>
+                    <div class="comment-input-group">
+                        <input type="text" id="commentInput-${task.id}" placeholder="Agregar comentario...">
+                        <button onclick="addComment('${task.id}')">Enviar</button>
+                    </div>
+                </div>
+            `;
+
+            // Load comments
+            const commentsList = card.querySelector(`#comments-${task.id}`);
+            const comments = task.comments || [];
+            comments.forEach(comment => {
+                const commentEl = document.createElement('div');
+                commentEl.className = 'comment-item';
+                commentEl.innerHTML = `
+                    <span class="comment-author">${comment.author}</span>
+                    <span class="comment-time">${comment.time}</span>
+                    <div class="comment-text">${comment.text}</div>
+                `;
+                commentsList.appendChild(commentEl);
+            });
+
+            return card;
+        }
+
+        function toggleComments(id) {
+            const section = document.getElementById(id);
+            section.classList.toggle('active');
+        }
+
+        async function addComment(taskId) {
+            const input = document.getElementById(`commentInput-${taskId}`);
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            if (!task.comments) task.comments = [];
+
+            const comment = {
+                author: currentUser.nombre,
+                text: text,
+                time: new Date().toLocaleString('es-CO', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})
+            };
+
+            task.comments.push(comment);
+            input.value = '';
+
+            try {
+                await saveTaskToDb(task);
+                await logActivityToDb(`${currentUser.nombre} comentó en tarea "${task.titulo}"`);
+                filterTasks();
+            } catch (err) {
+                console.error('Error adding comment:', err);
+                showToast('Error al agregar comentario');
+            }
+        }
+
+        async function changeTaskStatus(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const states = ['pendiente', 'en-progreso', 'en-revision', 'completada'];
+            const currentIndex = states.indexOf(task.estado);
+            const nextState = states[(currentIndex + 1) % states.length];
+
+            task.estado = nextState;
+
+            if (nextState === 'completada' && task.avance < 100) {
+                task.avance = 100;
+            }
+
+            try {
+                await saveTaskToDb(task);
+                await logActivityToDb(`${currentUser.nombre} cambió tarea "${task.titulo}" a ${nextState}`);
+
+                // Check for recurrence
+                if (task.recurrencia && task.recurrencia !== '') {
+                    const nextTask = createRecurringTask(task);
+                    if (nextTask) {
+                        tasks.push(nextTask);
+                        await saveTaskToDb(nextTask);
+                    }
+                }
+
+                filterTasks();
+                renderDashboard();
+            } catch (err) {
+                console.error('Error changing status:', err);
+                showToast('Error al cambiar estado');
+            }
+        }
+
+        function createRecurringTask(task) {
+            const nextDate = getNextRecurrenceDate(task.fecha, task.recurrencia);
+            if (!nextDate) return null;
+
+            return {
+                id: 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                titulo: task.titulo,
+                descripcion: task.descripcion,
+                empresa: task.empresa,
+                area: task.area,
+                persona_id: task.persona_id,
+                fecha: nextDate,
+                prioridad: task.prioridad,
+                estado: 'pendiente',
+                avance: 0,
+                recurrencia: task.recurrencia,
+                comments: [],
+                created_by: currentUser.nombre,
+                created_at: Date.now()
+            };
+        }
+
+        function getNextRecurrenceDate(currentDate, recurrence) {
+            if (!currentDate) return null;
+
+            const date = new Date(currentDate);
+            const days = {
+                'diaria': 1,
+                'semanal': 7,
+                'quincenal': 14,
+                'mensual': 30,
+                'bimestral': 60,
+                'trimestral': 90,
+                'semestral': 180,
+                'anual': 365
+            };
+
+            const daysToAdd = days[recurrence] || 0;
+            date.setDate(date.getDate() + daysToAdd);
+
+            return date.toISOString().split('T')[0];
+        }
+
+        function editTask(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            document.getElementById('taskId').value = task.id;
+            document.getElementById('taskModalTitle').textContent = 'Editar Tarea';
+            document.getElementById('taskTitulo').value = task.titulo;
+            document.getElementById('taskDescripcion').value = task.descripcion || '';
+            document.getElementById('taskEmpresa').value = task.empresa;
+            document.getElementById('taskArea').value = task.area || '';
+            document.getElementById('taskPersona').value = task.persona_id || '';
+            document.getElementById('taskFecha').value = task.fecha || '';
+            document.getElementById('taskPrioridad').value = task.prioridad;
+            document.getElementById('taskEstado').value = task.estado;
+            document.getElementById('taskAvance').value = task.avance || 0;
+            document.getElementById('taskRecurrencia').value = task.recurrencia || '';
+            document.getElementById('deleteTaskBtn').classList.remove('hidden');
+            updateAvanceDisplay();
+
+            openModal('taskModal');
+        }
+
+        async function deleteTaskUI(taskId) {
+            if (!confirm('¿Estás seguro que deseas eliminar esta tarea?')) return;
+
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            try {
+                tasks = tasks.filter(t => t.id !== taskId);
+                await deleteTaskFromDb(taskId);
+                await logActivityToDb(`${currentUser.nombre} eliminó tarea "${task.titulo}"`);
+                filterTasks();
+                renderDashboard();
+            } catch (err) {
+                console.error('Error deleting task:', err);
+                showToast('Error al eliminar tarea');
+            }
+        }
+
+        function updateAvanceDisplay() {
+            document.getElementById('avanceValue').textContent = document.getElementById('taskAvance').value;
+        }
+
+        document.getElementById('taskForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const taskId = document.getElementById('taskId').value;
+            const titulo = document.getElementById('taskTitulo').value;
+            const descripcion = document.getElementById('taskDescripcion').value;
+            const empresa = document.getElementById('taskEmpresa').value;
+            const area = document.getElementById('taskArea').value;
+            const persona = document.getElementById('taskPersona').value;
+            const fecha = document.getElementById('taskFecha').value;
+            const prioridad = document.getElementById('taskPrioridad').value;
+            const estado = document.getElementById('taskEstado').value;
+            const avance = parseInt(document.getElementById('taskAvance').value);
+            const recurrencia = document.getElementById('taskRecurrencia').value;
+
+            if (!titulo || !empresa) {
+                showToast('Título y Empresa son requeridos');
+                return;
+            }
+
+            try {
+                if (taskId) {
+                    const task = tasks.find(t => t.id === taskId);
+                    task.titulo = titulo;
+                    task.descripcion = descripcion;
+                    task.empresa = empresa;
+                    task.area = area;
+                    task.persona_id = persona || null;
+                    task.fecha = fecha;
+                    task.prioridad = prioridad;
+                    task.estado = estado;
+                    task.avance = avance;
+                    task.recurrencia = recurrencia;
+
+                    await saveTaskToDb(task);
+                    await logActivityToDb(`${currentUser.nombre} editó tarea "${titulo}"`);
+                } else {
+                    const newTask = {
+                        id: 'task_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                        titulo,
+                        descripcion,
+                        empresa,
+                        area,
+                        persona_id: persona || null,
+                        fecha,
+                        prioridad,
+                        estado,
+                        avance,
+                        recurrencia,
+                        comments: [],
+                        created_by: currentUser.nombre,
+                        created_at: Date.now()
+                    };
+
+                    tasks.push(newTask);
+                    await saveTaskToDb(newTask);
+                    await logActivityToDb(`${currentUser.nombre} creó tarea "${titulo}"`);
+                }
+
+                closeModal('taskModal');
+                document.getElementById('taskForm').reset();
+                document.getElementById('taskId').value = '';
+                document.getElementById('taskModalTitle').textContent = 'Nueva Tarea';
+                document.getElementById('deleteTaskBtn').classList.add('hidden');
+                filterTasks();
+                renderDashboard();
+            } catch (err) {
+                console.error('Error saving task:', err);
+                showToast('Error al guardar tarea');
+            }
+        });
+
+        // Kanban
+        function renderKanban() {
+            const board = document.getElementById('kanbanBoard');
+            board.innerHTML = '';
+
+            const states = ['pendiente', 'en-progreso', 'en-revision', 'completada'];
+            const stateLabels = {
+                'pendiente': '📋 Pendiente',
+                'en-progreso': '🚀 En Progreso',
+                'en-revision': '👀 En Revisión',
+                'completada': '✓ Completada'
+            };
+
+            states.forEach(state => {
+                const column = document.createElement('div');
+                column.className = 'kanban-column';
+
+                const header = document.createElement('div');
+                header.className = 'kanban-header';
+                header.textContent = stateLabels[state];
+                column.appendChild(header);
+
+                const cardsContainer = document.createElement('div');
+                cardsContainer.className = 'kanban-cards';
+
+                const stateCards = (isOwner ? tasks : tasks.filter(t => t.persona_id === currentUser.id))
+                    .filter(t => t.estado === state);
+
+                stateCards.forEach(task => {
+                    const persona = personas.find(p => p.id === task.persona_id);
+                    const card = document.createElement('div');
+                    card.className = 'kanban-card';
+                    card.onclick = () => editTask(task.id);
+
+                    card.innerHTML = `
+                        <div class="kanban-card-title">${task.titulo}</div>
+                        <div class="kanban-card-meta">
+                            <span><span class="priority-dot ${task.prioridad}"></span>${task.empresa}</span>
+                            <span>${persona?.nombre || 'Sin asignar'}</span>
+                        </div>
+                    `;
+
+                    cardsContainer.appendChild(card);
+                });
+
+                column.appendChild(cardsContainer);
+                board.appendChild(column);
+            });
+        }
+
+        // Personas
+        function renderPersonas() {
+            if (!isOwner) return;
+
+            const grid = document.getElementById('personasGrid');
+            grid.innerHTML = '';
+
+            personas.forEach(persona => {
+                const taskCount = tasks.filter(t => t.persona_id === persona.id).length;
+                const card = document.createElement('div');
+                card.className = 'persona-card';
+
+                const initials = persona.nombre
+                    .split(' ')
+                    .map(n => n[0])
+                    .join('')
+                    .toUpperCase();
+
+                card.innerHTML = `
+                    <div class="persona-avatar">${initials}</div>
+                    <div class="persona-name">${persona.nombre}</div>
+                    <div class="persona-role">${persona.cargo || 'Sin cargo'}</div>
+                    <div class="persona-companies">
+                        ${(persona.empresas || []).map(e => `<span class="persona-company">${e}</span>`).join('')}
+                    </div>
+                    <div class="persona-stats">
+                        <div class="persona-stat">
+                            <div class="persona-stat-value">${taskCount}</div>
+                            <div class="persona-stat-label">Tareas</div>
+                        </div>
+                    </div>
+                    <div class="persona-actions">
+                        <button class="btn btn-secondary btn-sm" onclick="editPersona('${persona.id}')">Editar</button>
+                    </div>
+                `;
+
+                grid.appendChild(card);
+            });
+        }
+
+        function editPersona(personaId) {
+            const persona = personas.find(p => p.id === personaId);
+            if (!persona) return;
+
+            document.getElementById('personaId').value = persona.id;
+            document.getElementById('personaModalTitle').textContent = 'Editar Persona';
+            document.getElementById('personaNombre').value = persona.nombre;
+            document.getElementById('personaCargo').value = persona.cargo || '';
+            document.getElementById('personaPin').value = persona.pin || '';
+            document.getElementById('deletePersonaBtn').classList.remove('hidden');
+
+            // Load empresas
+            renderEmpresasChips(persona.empresas || []);
+
+            openModal('personaModal');
+        }
+
+        function renderEmpresasChips(empresas) {
+            const chipsInput = document.getElementById('empresasChips');
+            const chipsContainer = chipsInput.querySelectorAll('.chip');
+            chipsContainer.forEach(chip => chip.remove());
+
+            empresas.forEach(empresa => {
+                const chip = document.createElement('div');
+                chip.className = 'chip';
+                chip.innerHTML = `
+                    ${empresa}
+                    <button class="chip-remove" type="button" onclick="removeChip(this)">×</button>
+                `;
+                chipsInput.insertBefore(chip, chipsInput.querySelector('input'));
+            });
+
+            updatePersonaEmpresas();
+        }
+
+        function removeChip(btn) {
+            btn.parentElement.remove();
+            updatePersonaEmpresas();
+        }
+
+        function updatePersonaEmpresas() {
+            const chips = document.querySelectorAll('#empresasChips .chip');
+            const empresas = Array.from(chips).map(c => c.textContent.replace('×', '').trim());
+            document.getElementById('personaEmpresas').value = JSON.stringify(empresas);
+        }
+
+        document.getElementById('empresasInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const value = e.target.value.trim();
+                if (value && (value === 'Dynamik' || value === 'Deli Restaurante')) {
+                    const chips = Array.from(document.querySelectorAll('#empresasChips .chip'))
+                        .map(c => c.textContent.replace('×', '').trim());
+                    if (!chips.includes(value)) {
+                        const chip = document.createElement('div');
+                        chip.className = 'chip';
+                        chip.innerHTML = `
+                            ${value}
+                            <button class="chip-remove" type="button" onclick="removeChip(this)">×</button>
+                        `;
+                        document.getElementById('empresasChips').insertBefore(chip, e.target);
+                        e.target.value = '';
+                        updatePersonaEmpresas();
+                    }
+                }
+            }
+        });
+
+        document.getElementById('personaForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const personaId = document.getElementById('personaId').value;
+            const nombre = document.getElementById('personaNombre').value;
+            const cargo = document.getElementById('personaCargo').value;
+            const pin = document.getElementById('personaPin').value;
+            const empresas = JSON.parse(document.getElementById('personaEmpresas').value || '[]');
+
+            if (!nombre) {
+                showToast('El nombre es requerido');
+                return;
+            }
+
+            try {
+                if (personaId) {
+                    const persona = personas.find(p => p.id === personaId);
+                    persona.nombre = nombre;
+                    persona.cargo = cargo;
+                    persona.pin = pin;
+                    persona.empresas = empresas;
+
+                    await savePersonaToDb(persona);
+                    await logActivityToDb(`${currentUser.nombre} editó persona "${nombre}"`);
+                } else {
+                    const newPersona = {
+                        id: 'p_' + nombre.toLowerCase().replace(/\s+/g, '_') + '_' + Math.random().toString(36).substr(2, 9),
+                        nombre,
+                        cargo,
+                        pin,
+                        empresas,
+                        created_at: new Date().toISOString()
+                    };
+
+                    personas.push(newPersona);
+                    await savePersonaToDb(newPersona);
+                    await logActivityToDb(`${currentUser.nombre} creó persona "${nombre}"`);
+                }
+
+                closeModal('personaModal');
+                document.getElementById('personaForm').reset();
+                document.getElementById('personaId').value = '';
+                document.getElementById('personaModalTitle').textContent = 'Nueva Persona';
+                document.getElementById('deletePersonaBtn').classList.add('hidden');
+                renderPersonas();
+                filterTasks();
+            } catch (err) {
+                console.error('Error saving persona:', err);
+                showToast('Error al guardar persona');
+            }
+        });
+
+        async function deletePersona() {
+            const personaId = document.getElementById('personaId').value;
+            if (!personaId) return;
+
+            if (!confirm('¿Estás seguro que deseas eliminar esta persona?')) return;
+
+            const persona = personas.find(p => p.id === personaId);
+            if (!persona) return;
+
+            try {
+                personas = personas.filter(p => p.id !== personaId);
+                await deletePersonaFromDb(personaId);
+                await logActivityToDb(`${currentUser.nombre} eliminó persona "${persona.nombre}"`);
+                closeModal('personaModal');
+                renderPersonas();
+            } catch (err) {
+                console.error('Error deleting persona:', err);
+                showToast('Error al eliminar persona');
+            }
+        }
+
+        async function deleteTask() {
+            const taskId = document.getElementById('taskId').value;
+            if (!taskId || !confirm('¿Estás seguro que deseas eliminar esta tarea?')) return;
+
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            try {
+                tasks = tasks.filter(t => t.id !== taskId);
+                await deleteTaskFromDb(taskId);
+                await logActivityToDb(`${currentUser.nombre} eliminó tarea "${task.titulo}"`);
+                closeModal('taskModal');
+                filterTasks();
+                renderDashboard();
+            } catch (err) {
+                console.error('Error deleting task:', err);
+                showToast('Error al eliminar tarea');
+            }
+        }
+
+        // Backup
+        function updateBackupStats() {
+            document.getElementById('statsTaskCount').textContent = tasks.length;
+            document.getElementById('statsPersonaCount').textContent = personas.length;
+            document.getElementById('statsLastUpdate').textContent = new Date().toLocaleString('es-CO');
+        }
+
+        function exportBackup() {
+            updateBackupStats();
+            const data = {
+                personas,
+                tasks,
+                activity,
+                exportDate: new Date().toISOString()
+            };
+
+            const json = JSON.stringify(data, null, 2);
+            const blob = new Blob([json], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `taskflow-backup-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Datos descargados');
+        }
+
+        function importBackup() {
+            const file = document.getElementById('importFile').files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+
+                    if (!confirm('¿Estás seguro que deseas importar estos datos? Esto reemplazará todos los datos actuales.')) {
+                        return;
+                    }
+
+                    // Upload all data
+                    await Promise.all([
+                        ...data.personas.map(p => savePersonaToDb(p)),
+                        ...data.tasks.map(t => saveTaskToDb(t))
+                    ]);
+
+                    await loadAllData();
+                    renderDashboard();
+                    renderTareas();
+                    renderKanban();
+                    renderPersonas();
+                    closeModal('backupModal');
+                    showToast('Datos importados correctamente');
+                } catch (err) {
+                    console.error('Error importing backup:', err);
+                    showToast('Error al importar datos');
+                }
+            };
+
+            reader.readAsText(file);
+        }
+
+        // Notifications
+        async function showNotifications() {
+            const lastVisit = await getConfig(`last_visit_${currentUser.id}`);
+            const lastVisitDate = lastVisit ? new Date(lastVisit) : new Date(0);
+
+            let userTasks = isOwner ? tasks : tasks.filter(t => t.persona_id === currentUser.id);
+
+            const overdueTasks = userTasks.filter(t => isOverdue(t) && t.estado !== 'completada');
+            const todayTasks = userTasks.filter(t => isDueToday(t) && t.estado !== 'completada');
+            const in3DaysTasks = userTasks.filter(t => isDueWithin3Days(t) && t.estado !== 'completada' && !isDueToday(t));
+            const newTasks = userTasks.filter(t => new Date(t.created_at) > lastVisitDate);
+
+            if (overdueTasks.length === 0 && todayTasks.length === 0 && in3DaysTasks.length === 0 && newTasks.length === 0) {
+                return;
+            }
+
+            const notifBar = document.getElementById('notificationBar');
+            const notifContent = document.getElementById('notificationContent');
+            notifContent.innerHTML = '';
+
+            if (overdueTasks.length > 0) {
+                const item = document.createElement('div');
+                item.className = 'notification-item';
+                item.innerHTML = `<strong>⚠️ ${overdueTasks.length} retrasada(s)</strong>`;
+                notifContent.appendChild(item);
+            }
+
+            if (todayTasks.length > 0) {
+                const item = document.createElement('div');
+                item.className = 'notification-item';
+                item.innerHTML = `<strong>🔴 ${todayTasks.length} vence(n) hoy</strong>`;
+                notifContent.appendChild(item);
+            }
+
+            if (in3DaysTasks.length > 0) {
+                const item = document.createElement('div');
+                item.className = 'notification-item';
+                item.innerHTML = `<strong>🟡 ${in3DaysTasks.length} vence(n) en 3 días</strong>`;
+                notifContent.appendChild(item);
+            }
+
+            if (newTasks.length > 0) {
+                const item = document.createElement('div');
+                item.className = 'notification-item';
+                item.innerHTML = `<strong>📌 ${newTasks.length} tarea(s) nueva(s)</strong>`;
+                notifContent.appendChild(item);
+            }
+
+            notifBar.classList.remove('hidden');
+        }
+
+        function dismissNotifications() {
+            document.getElementById('notificationBar').classList.add('hidden');
+        }
+
+        // Utility Functions
+        function isOverdue(task) {
+            if (!task.fecha || task.estado === 'completada') return false;
+            return new Date(task.fecha) < new Date() && new Date(task.fecha).toDateString() !== new Date().toDateString();
+        }
+
+        function isDueToday(task) {
+            if (!task.fecha) return false;
+            return new Date(task.fecha).toDateString() === new Date().toDateString();
+        }
+
+        function isDueWithin3Days(task) {
+            if (!task.fecha || task.estado === 'completada') return false;
+            const taskDate = new Date(task.fecha);
+            const today = new Date();
+            const diffTime = taskDate - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays > 0 && diffDays <= 3;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString + 'T00:00:00');
+            return date.toLocaleDateString('es-CO', {day: '2-digit', month: 'short', year: '2-digit'});
+        }
+
+        function capitalizeFirst(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+
+        function updateAreaFilters() {
+            const filterArea = document.getElementById('filterArea');
+            const currentValue = filterArea.value;
+            filterArea.innerHTML = '<option value="">Todas las áreas</option>';
+
+            Array.from(areas).sort().forEach(area => {
+                const option = document.createElement('option');
+                option.value = area;
+                option.textContent = area;
+                filterArea.appendChild(option);
+            });
+
+            filterArea.value = currentValue;
+        }
+
+        function updatePersonaSelect() {
+            const select = document.getElementById('taskPersona');
+            const currentValue = select.value;
+            select.innerHTML = '<option value="">Sin asignar</option>';
+
+            personas.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p.id;
+                option.textContent = p.nombre;
+                select.appendChild(option);
+            });
+
+            select.value = currentValue;
+        }
+
+        // Modal form submissions
+        document.getElementById('setupPinForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            setupOwnerPin();
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            loginUser();
+        });
+
+        // Initialize
+        window.addEventListener('load', () => {
+            initializeLogin();
+            updateBackupStats();
+        });
+
+        // Close modals on escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal.active').forEach(m => {
+                    m.classList.remove('active');
+                });
+            }
+        });
+
+        // Update persona select when personas change
+        function updateAllSelects() {
+            updatePersonaSelect();
+            updateAreaFilters();
+        }
+    </script>
+</body>
+</html>
