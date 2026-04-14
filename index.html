@@ -1183,6 +1183,10 @@
                     <div class="pin-input" id="pinInput"></div>
                     <input type="hidden" id="pinValue">
                 </div>
+                <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;">
+                    <input type="checkbox" id="rememberSession" style="width:auto;margin:0;cursor:pointer;">
+                    <label for="rememberSession" style="margin:0;cursor:pointer;font-size:0.9rem;">Recordar mi sesión</label>
+                </div>
                 <button type="button" onclick="loginUser()">Ingresar</button>
             </form>
         </div>
@@ -1575,6 +1579,9 @@
             });
 
             renderPinInput();
+
+            // Attempt auto-login if session was saved
+            await tryAutoLogin();
         }
 
         function renderPinInput() {
@@ -1640,6 +1647,20 @@
                 currentUser = persona;
             }
 
+            // Save session if "Recordar" is checked
+            const remember = document.getElementById('rememberSession')?.checked;
+            if (remember) {
+                try {
+                    localStorage.setItem('taskflow_session', JSON.stringify({
+                        personaId: personaSelect.value,
+                        pin: pin,
+                        savedAt: Date.now()
+                    }));
+                } catch(e) { console.warn('No se pudo guardar la sesión', e); }
+            } else {
+                try { localStorage.removeItem('taskflow_session'); } catch(e) {}
+            }
+
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('mainApp').classList.remove('hidden');
 
@@ -1653,6 +1674,40 @@
             showNotifications();
 
             await setConfig(`last_visit_${currentUser.id}`, new Date().toISOString());
+        }
+
+        async function tryAutoLogin() {
+            let saved;
+            try { saved = JSON.parse(localStorage.getItem('taskflow_session') || 'null'); } catch(e) { return false; }
+            if (!saved || !saved.personaId || !saved.pin) return false;
+
+            // Expire after 30 days
+            const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+            if (saved.savedAt && (Date.now() - saved.savedAt) > THIRTY_DAYS) {
+                localStorage.removeItem('taskflow_session');
+                return false;
+            }
+
+            document.getElementById('personaSelect').value = saved.personaId;
+            document.getElementById('pinValue').value = saved.pin;
+            document.getElementById('rememberSession').checked = true;
+
+            // Validate
+            if (saved.personaId === 'owner') {
+                const ownerPin = await getConfig('owner_pin');
+                if (!ownerPin || saved.pin !== ownerPin) {
+                    localStorage.removeItem('taskflow_session');
+                    return false;
+                }
+            } else {
+                const persona = personas.find(p => p.id === saved.personaId);
+                if (!persona || persona.pin !== saved.pin) {
+                    localStorage.removeItem('taskflow_session');
+                    return false;
+                }
+            }
+            await loginUser();
+            return true;
         }
 
         async function setupOwnerPin() {
@@ -1700,6 +1755,7 @@
 
         function logout() {
             if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
+                try { localStorage.removeItem('taskflow_session'); } catch(e) {}
                 currentUser = null;
                 isOwner = false;
                 document.getElementById('mainApp').classList.add('hidden');
@@ -1707,6 +1763,8 @@
                 document.getElementById('personaSelect').value = '';
                 document.querySelectorAll('.pin-digit').forEach(d => d.value = '');
                 document.getElementById('pinValue').value = '';
+                const rc = document.getElementById('rememberSession');
+                if (rc) rc.checked = false;
             }
         }
 
