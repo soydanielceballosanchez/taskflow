@@ -1218,6 +1218,7 @@
                     <li><button class="nav-btn active" data-page="tareas" onclick="switchPage('tareas')">Tareas</button></li>
                     <li><button class="nav-btn" data-page="kanban" onclick="switchPage('kanban')">Kanban</button></li>
                     <li id="personasTabContainer" class="hidden"><button class="nav-btn" data-page="personas" onclick="switchPage('personas')">Personas</button></li>
+                    <li id="empresasTabContainer" class="hidden"><button class="nav-btn" data-page="empresas" onclick="switchPage('empresas')">Empresas</button></li>
                 </ul>
             </div>
             <div class="nav-right">
@@ -1335,6 +1336,15 @@
                 <div class="personas-grid" id="personasGrid"></div>
             </div>
         </div>
+
+        <!-- Empresas Page -->
+        <div id="empresasPage" class="page-section">
+            <div class="main-container">
+                <h2 style="margin-bottom: 2rem; color: #1a1a2e;">Empresas</h2>
+                <button class="btn btn-primary" style="margin-bottom: 2rem;" onclick="addEmpresaPrompt()">+ Nueva Empresa</button>
+                <div id="empresasList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;"></div>
+            </div>
+        </div>
     </div>
 
     <!-- Task Modal -->
@@ -1378,9 +1388,9 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group" id="personaFieldContainer">
-                        <label>Persona</label>
-                        <select id="taskPersona">
-                            <option value="">Sin asignar</option>
+                        <label>Persona *</label>
+                        <select id="taskPersona" required onchange="onPersonaChange()">
+                            <option value="">— Seleccionar persona —</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -1511,6 +1521,7 @@
         let isOwner = false;
         let personas = [];
         let tasks = [];
+        let empresas = ['Dynamik', 'Deli Restaurante'];
         let activity = [];
         let areas = new Set();
 
@@ -1671,6 +1682,7 @@
             if (isOwner) {
                 document.getElementById('dashboardTabContainer').classList.remove('hidden');
                 document.getElementById('personasTabContainer').classList.remove('hidden');
+                document.getElementById('empresasTabContainer').classList.remove('hidden');
                 document.getElementById('backupBtn').classList.remove('hidden');
                 document.getElementById('filterPersona').classList.remove('hidden');
                 document.getElementById('personaFieldContainer').classList.remove('hidden');
@@ -1678,6 +1690,7 @@
             } else {
                 document.getElementById('dashboardTabContainer').classList.add('hidden');
                 document.getElementById('personasTabContainer').classList.add('hidden');
+                document.getElementById('empresasTabContainer').classList.add('hidden');
                 document.getElementById('backupBtn').classList.add('hidden');
                 document.getElementById('filterPersona').classList.add('hidden');
                 document.getElementById('personaFieldContainer').classList.add('hidden');
@@ -1701,15 +1714,23 @@
         async function loadAllData() {
             showSpinner();
             try {
-                const [personas_data, tasks_data, activity_data] = await Promise.all([
+                const [personas_data, tasks_data, activity_data, empresas_data] = await Promise.all([
                     sb.from('personas').select('*'),
                     sb.from('tasks').select('*'),
-                    sb.from('activity').select('*').order('created_at', {ascending: false}).limit(60)
+                    sb.from('activity').select('*').order('created_at', {ascending: false}).limit(60),
+                    sb.from('config').select('value').eq('key', 'empresas').maybeSingle()
                 ]);
 
                 personas = personas_data.data || [];
                 tasks = tasks_data.data || [];
                 activity = activity_data.data || [];
+
+                if (empresas_data.data && empresas_data.data.value) {
+                    try {
+                        const parsed = JSON.parse(empresas_data.data.value);
+                        if (Array.isArray(parsed) && parsed.length > 0) empresas = parsed;
+                    } catch(e) {}
+                }
 
                 areas.clear();
                 tasks.forEach(t => {
@@ -1717,11 +1738,98 @@
                 });
 
                 updateAreaFilters();
+                updateEmpresaLists();
             } catch (err) {
                 console.error('Error loading data:', err);
                 showToast('Error cargando datos');
             }
             hideSpinner();
+        }
+
+        async function saveEmpresasToDb() {
+            const {error} = await sb.from('config').upsert({key: 'empresas', value: JSON.stringify(empresas)});
+            if (error) throw error;
+        }
+
+        function updateEmpresaLists() {
+            // Datalist for task form
+            const taskList = document.getElementById('empresaList');
+            if (taskList) {
+                taskList.innerHTML = empresas.map(e => `<option value="${e}">`).join('');
+            }
+            // Datalist for persona chips
+            const chipList = document.getElementById('empresaChipList');
+            if (chipList) {
+                chipList.innerHTML = empresas.map(e => `<option value="${e}">`).join('');
+            }
+            // Filter select
+            const filterSelect = document.getElementById('filterEmpresa');
+            if (filterSelect) {
+                const currentVal = filterSelect.value;
+                filterSelect.innerHTML = '<option value="">Todas las empresas</option>' +
+                    empresas.map(e => `<option value="${e}">${e}</option>`).join('');
+                filterSelect.value = currentVal;
+            }
+            // Render empresas management list
+            renderEmpresas();
+        }
+
+        function renderEmpresas() {
+            const container = document.getElementById('empresasList');
+            if (!container) return;
+            container.innerHTML = '';
+            empresas.forEach(empresa => {
+                const count = tasks.filter(t => t.empresa === empresa).length;
+                const card = document.createElement('div');
+                card.style.cssText = 'background:white;padding:1.5rem;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);display:flex;justify-content:space-between;align-items:center;';
+                card.innerHTML = `
+                    <div>
+                        <h3 style="margin:0 0 0.5rem 0;color:#1a1a2e;">${empresa}</h3>
+                        <p style="margin:0;color:#666;font-size:0.9rem;">${count} tarea${count!==1?'s':''}</p>
+                    </div>
+                    <button class="btn btn-danger btn-sm" onclick="deleteEmpresa('${empresa.replace(/'/g,"\\'")}')">Eliminar</button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function addEmpresaPrompt() {
+            const nombre = prompt('Nombre de la nueva empresa:');
+            if (!nombre || !nombre.trim()) return;
+            const trimmed = nombre.trim();
+            if (empresas.includes(trimmed)) {
+                showToast('Esa empresa ya existe');
+                return;
+            }
+            empresas.push(trimmed);
+            try {
+                await saveEmpresasToDb();
+                updateEmpresaLists();
+                showToast('Empresa agregada');
+            } catch(err) {
+                console.error(err);
+                empresas = empresas.filter(e => e !== trimmed);
+                showToast('Error al guardar empresa');
+            }
+        }
+
+        async function deleteEmpresa(nombre) {
+            const count = tasks.filter(t => t.empresa === nombre).length;
+            const msg = count > 0
+                ? `"${nombre}" tiene ${count} tarea(s) asignada(s). ¿Eliminar de todas formas? Las tareas quedarán sin empresa.`
+                : `¿Eliminar empresa "${nombre}"?`;
+            if (!confirm(msg)) return;
+            const backup = [...empresas];
+            empresas = empresas.filter(e => e !== nombre);
+            try {
+                await saveEmpresasToDb();
+                updateEmpresaLists();
+                showToast('Empresa eliminada');
+            } catch(err) {
+                console.error(err);
+                empresas = backup;
+                showToast('Error al eliminar empresa');
+            }
         }
 
         async function saveTaskToDb(task) {
@@ -1790,6 +1898,9 @@
         }
 
         function openModal(modalId) {
+            if (modalId === 'taskModal') {
+                updatePersonaSelect();
+            }
             const modal = document.getElementById(modalId);
             modal.classList.add('active');
         }
@@ -1842,7 +1953,7 @@
             // Company Breakdown
             const breakdown = document.getElementById('companyBreakdownBody');
             breakdown.innerHTML = '';
-            ['Dynamik', 'Deli Restaurante'].forEach(empresa => {
+            empresas.forEach(empresa => {
                 const companyTasks = tasks.filter(t => t.empresa === empresa);
                 const total = companyTasks.length;
                 const inProgress = companyTasks.filter(t => t.estado === 'en-progreso').length;
@@ -2223,8 +2334,14 @@
             document.getElementById('avanceValue').textContent = document.getElementById('taskAvance').value;
         }
 
+        let _savingTask = false;
         document.getElementById('taskForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (_savingTask) return;
+            _savingTask = true;
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Guardando...'; }
 
             const taskId = document.getElementById('taskId').value;
             const titulo = document.getElementById('taskTitulo').value;
@@ -2240,6 +2357,15 @@
 
             if (!titulo || !empresa) {
                 showToast('Título y Empresa son requeridos');
+                _savingTask = false;
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Guardar'; }
+                return;
+            }
+
+            if (!persona) {
+                showToast('Debes seleccionar una persona');
+                _savingTask = false;
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Guardar'; }
                 return;
             }
 
@@ -2292,6 +2418,10 @@
             } catch (err) {
                 console.error('Error saving task:', err);
                 showToast('Error al guardar tarea');
+            } finally {
+                _savingTask = false;
+                const btn = document.querySelector('#taskForm button[type="submit"]');
+                if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; }
             }
         });
 
@@ -2435,7 +2565,7 @@
             if (e.key === 'Enter') {
                 e.preventDefault();
                 const value = e.target.value.trim();
-                if (value && (value === 'Dynamik' || value === 'Deli Restaurante')) {
+                if (value && empresas.includes(value)) {
                     const chips = Array.from(document.querySelectorAll('#empresasChips .chip'))
                         .map(c => c.textContent.replace('×', '').trim());
                     if (!chips.includes(value)) {
@@ -2711,7 +2841,7 @@
         function updatePersonaSelect() {
             const select = document.getElementById('taskPersona');
             const currentValue = select.value;
-            select.innerHTML = '<option value="">Sin asignar</option>';
+            select.innerHTML = '<option value="">— Seleccionar persona —</option>';
 
             personas.forEach(p => {
                 const option = document.createElement('option');
@@ -2721,6 +2851,19 @@
             });
 
             select.value = currentValue;
+        }
+
+        function onPersonaChange() {
+            const personaId = document.getElementById('taskPersona').value;
+            if (!personaId) return;
+            const persona = personas.find(p => p.id === personaId);
+            if (!persona || !persona.empresas || persona.empresas.length === 0) return;
+            const empresaInput = document.getElementById('taskEmpresa');
+            if (persona.empresas.length === 1) {
+                empresaInput.value = persona.empresas[0];
+            } else if (!empresaInput.value) {
+                empresaInput.value = persona.empresas[0];
+            }
         }
 
         // Modal form submissions
