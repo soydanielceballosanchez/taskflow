@@ -1393,7 +1393,7 @@
                 <div class="form-row">
                     <div class="form-group" id="personaFieldContainer">
                         <label>Persona *</label>
-                        <select id="taskPersona" required onchange="onPersonaChange()">
+                        <select id="taskPersona" onchange="onPersonaChange()">
                             <option value="">— Seleccionar persona —</option>
                         </select>
                     </div>
@@ -1958,6 +1958,14 @@
         function openModal(modalId) {
             if (modalId === 'taskModal') {
                 updatePersonaSelect();
+                // Non-owners: auto-assign persona to themselves
+                if (!isOwner && currentUser) {
+                    const taskId = document.getElementById('taskId').value;
+                    if (!taskId) { // Only for new tasks
+                        document.getElementById('taskPersona').value = currentUser.id;
+                        onPersonaChange();
+                    }
+                }
             }
             const modal = document.getElementById(modalId);
             modal.classList.add('active');
@@ -2420,7 +2428,9 @@
                 return;
             }
 
-            if (!persona) {
+            // Auto-assign persona for non-owners
+            const finalPersona = persona || (!isOwner && currentUser ? currentUser.id : '');
+            if (!finalPersona) {
                 showToast('Debes seleccionar una persona');
                 _savingTask = false;
                 if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Guardar'; }
@@ -2434,7 +2444,7 @@
                     task.descripcion = descripcion;
                     task.empresa = empresa;
                     task.area = area;
-                    task.persona_id = persona || null;
+                    task.persona_id = finalPersona || null;
                     task.fecha = fecha;
                     task.prioridad = prioridad;
                     task.estado = estado;
@@ -2450,7 +2460,7 @@
                         descripcion,
                         empresa,
                         area,
-                        persona_id: persona || null,
+                        persona_id: finalPersona || null,
                         fecha,
                         prioridad,
                         estado,
